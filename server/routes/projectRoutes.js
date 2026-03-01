@@ -18,7 +18,8 @@ router.post('/', async (req, res) => {
         title: req.body.title,
         description: req.body.description,
         link: req.body.link,
-        thumbnailUrl: req.body.thumbnailUrl
+        thumbnailUrl: req.body.thumbnailUrl,
+        category: req.body.category
     });
 
     try {

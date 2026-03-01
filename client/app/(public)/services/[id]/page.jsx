@@ -1,7 +1,7 @@
 'use client';
-import { useParams } from 'next/navigation';
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Globe,
     Smartphone,
@@ -16,7 +16,9 @@ import {
     Shield,
     Target,
     Send,
-    Loader2
+    Loader2,
+    X,
+    Check
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -154,7 +156,7 @@ const servicesData = {
         ]
     },
     'repairs-and-maintenance': {
-        title: 'Hardware Repairs',
+        title: 'Laptop & Phone Repairs',
         subtitle: 'Expert Care for Your Tools',
         icon: Wrench,
         color: 'text-amber-600',
@@ -209,6 +211,7 @@ const servicesData = {
 
 export default function ServiceDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const serviceId = params.id;
     const service = servicesData[serviceId];
 
@@ -219,6 +222,7 @@ export default function ServiceDetailPage() {
         details: {}
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     if (!service) {
         return (
@@ -257,8 +261,12 @@ export default function ServiceDetailPage() {
             });
 
             if (res.ok) {
-                toast.success('Your request has been submitted successfully!');
+                setShowSuccessModal(true);
                 setFormData({ customerName: '', email: '', phone: '', details: {} });
+                // Redirect after 3 seconds
+                setTimeout(() => {
+                    router.push('/');
+                }, 3000);
             } else {
                 throw new Error('Failed to submit');
             }
@@ -270,7 +278,55 @@ export default function ServiceDetailPage() {
     };
 
     return (
-        <div className="pt-32 pb-32 min-h-screen bg-white selection:bg-[#f89e35] selection:text-white">
+        <div className="pt-32 pb-32 min-h-screen bg-white selection:bg-[#f89e35] selection:text-white relative">
+            {/* Success Modal */}
+            <AnimatePresence>
+                {showSuccessModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                            onClick={() => router.push('/')}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative bg-white w-full max-w-md rounded-[40px] p-10 text-center shadow-2xl"
+                        >
+                            <button
+                                onClick={() => router.push('/')}
+                                className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+
+                            <div className="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
+                                <Check className="w-10 h-10" />
+                            </div>
+
+                            <h2 className="text-3xl font-black text-slate-900 mb-4">Request Sent!</h2>
+                            <p className="text-slate-500 font-medium mb-10 leading-relaxed">
+                                Thank you for your interest. Our experts will review your request and reach out to you within 24 hours.
+                            </p>
+
+                            <div className="space-y-4">
+                                <Link
+                                    href="/"
+                                    className="block w-full bg-[#f89e35] text-white py-4 rounded-2xl font-black shadow-lg shadow-[#f89e35]/20 hover:bg-[#e08b2c] transition-all"
+                                >
+                                    Return Home
+                                </Link>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                    Redirecting in 3 seconds...
+                                </p>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
             <div className="max-w-7xl mx-auto px-6">
                 {/* Header */}
                 <motion.div

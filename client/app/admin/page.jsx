@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import API_BASE_URL from '@/lib/api';
 
@@ -15,9 +16,10 @@ export default function AdminDashboard() {
     const [applications, setApplications] = useState([]);
     const [serviceRequests, setServiceRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // New Forms
-    const [newProject, setNewProject] = useState({ title: '', description: '', link: '', thumbnailUrl: '' });
+    const [newProject, setNewProject] = useState({ title: '', description: '', link: '', thumbnailUrl: '', category: 'Web Development' });
     const [newJob, setNewJob] = useState({ title: '', description: '', type: 'Full-time', location: 'Remote' });
 
     useEffect(() => {
@@ -140,55 +142,104 @@ export default function AdminDashboard() {
         } catch (err) { toast.error('Error updating content'); }
     };
 
+    useEffect(() => {
+        setIsSidebarOpen(false);
+    }, [activeTab]);
+
     return (
-        <div className="flex h-screen overflow-hidden bg-white selection:bg-[#f89e35] selection:text-white">
+        <div className="flex h-screen overflow-hidden bg-white selection:bg-[#f89e35] selection:text-white relative">
             <Toaster position="top-right" toastOptions={{ style: { background: '#ffffff', color: '#0f172a', border: '1px solid #e2e8f0' } }} />
 
-            {/* Sidebar */}
-            <div className="w-72 bg-slate-50 border-r border-slate-200/60 p-6 flex flex-col justify-between shadow-[2px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 relative">
-                <div>
-                    <div className="flex items-center gap-3 mb-10">
-                        <span className="w-8 h-8 rounded-full bg-[#f89e35] flex items-center justify-center">
-                            <span className="w-3 h-3 rounded-full bg-slate-50"></span>
-                        </span>
-                        <h2 className="text-xl font-black text-slate-900 tracking-wide">
-                            LALA TECH <span className="text-slate-400 font-medium text-xs ml-1 bg-slate-200 px-2 py-1 rounded-full">ADMIN</span>
-                        </h2>
-                    </div>
-
-                    <nav className="space-y-2">
-                        {[
-                            { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
-                            { id: 'content', icon: FileText, label: 'Content Manager' },
-                            { id: 'projects', icon: Briefcase, label: 'Ventures' },
-                            { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
-                            { id: 'careers', icon: Users, label: 'Careers' },
-                            { id: 'messages', icon: MessageSquare, label: 'Messages' },
-                        ].map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all duration-200 ${activeTab === tab.id
-                                    ? 'bg-[#f89e35] text-white shadow-md shadow-[#f89e35]/20 transform scale-[1.02]'
-                                    : 'text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm'
-                                    }`}
-                            >
-                                <tab.icon className="w-5 h-5" />
-                                {tab.label}
-                            </button>
-                        ))}
-                    </nav>
+            {/* Mobile Header */}
+            <div className="lg:hidden fixed top-0 left-0 w-full z-40 bg-white border-b border-slate-100 p-5 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-[#f89e35] flex items-center justify-center">
+                        <span className="w-2 h-2 rounded-full bg-white"></span>
+                    </span>
+                    <span className="font-black text-slate-900 tracking-tight text-sm uppercase">LALA TECH</span>
                 </div>
-
-                <div className="pb-4">
-                    <Link href="/" className="flex items-center gap-3 font-semibold text-slate-500 hover:text-slate-900 px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all">
-                        <LogOut className="w-5 h-5" /> Back to Website
-                    </Link>
-                </div>
+                <button
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="p-2 text-slate-500 hover:text-[#f89e35] transition"
+                >
+                    <Menu className="w-6 h-6" />
+                </button>
             </div>
 
+            {/* Sidebar Desktop & Mobile */}
+            <AnimatePresence>
+                {(isSidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 1024)) && (
+                    <>
+                        {/* Overlay for mobile */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
+                        />
+
+                        <motion.div
+                            initial={{ x: '-100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className={`
+                                fixed lg:static inset-y-0 left-0 w-72 bg-slate-50 border-r border-slate-200/60 p-6 flex flex-col justify-between 
+                                shadow-[2px_0_15px_-3px_rgba(0,0,0,0.05)] z-50 lg:z-10
+                            `}
+                        >
+                            <div>
+                                <div className="flex items-center justify-between mb-10">
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-8 h-8 rounded-full bg-[#f89e35] flex items-center justify-center">
+                                            <span className="w-3 h-3 rounded-full bg-slate-50"></span>
+                                        </span>
+                                        <h2 className="text-xl font-black text-slate-900 tracking-wide">
+                                            LALA TECH <span className="text-slate-400 font-medium text-[10px] ml-1 bg-slate-200 px-2 py-1 rounded-full">ADMIN</span>
+                                        </h2>
+                                    </div>
+                                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <nav className="space-y-2">
+                                    {[
+                                        { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
+                                        { id: 'content', icon: FileText, label: 'Content Manager' },
+                                        { id: 'projects', icon: Briefcase, label: 'Ventures' },
+                                        { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
+                                        { id: 'careers', icon: Users, label: 'Careers' },
+                                        { id: 'messages', icon: MessageSquare, label: 'Messages' },
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all duration-200 ${activeTab === tab.id
+                                                ? 'bg-[#f89e35] text-white shadow-md shadow-[#f89e35]/20 transform scale-[1.02]'
+                                                : 'text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm'
+                                                }`}
+                                        >
+                                            <tab.icon className="w-5 h-5" />
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </nav>
+                            </div>
+
+                            <div className="pb-4">
+                                <Link href="/" className="flex items-center gap-3 font-semibold text-slate-500 hover:text-slate-900 px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                                    <LogOut className="w-5 h-5" /> Back to Website
+                                </Link>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto bg-slate-50/50 p-10 lg:p-14 relative">
+            <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6 md:p-10 lg:p-14 pt-24 lg:pt-14 relative w-full">
                 {loading && (
                     <div className="absolute top-10 right-10 z-50 bg-white p-3 rounded-full shadow-lg border border-slate-100">
                         <Loader2 className="w-6 h-6 animate-spin text-[#f89e35]" />
@@ -198,10 +249,10 @@ export default function AdminDashboard() {
                 <div className="max-w-6xl mx-auto">
                     {activeTab === 'overview' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h1 className="text-4xl font-black text-slate-900 mb-2">Welcome Back</h1>
-                            <p className="text-slate-500 font-medium mb-10">Here's a quick look at your website's performance.</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Welcome Back</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Here's a quick look at your website's performance.</p>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
                                     <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#f89e35]/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
                                     <h3 className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-3">Total Visitors</h3>
@@ -213,35 +264,35 @@ export default function AdminDashboard() {
 
                     {activeTab === 'content' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
-                            <h1 className="text-4xl font-black text-slate-900 mb-2">Content Manager</h1>
-                            <p className="text-slate-500 font-medium mb-10">Update your website's copy directly from here.</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Content Manager</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Update your website's copy directly from here.</p>
 
-                            <div className="space-y-8">
-                                <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">Hero Section Subtitle</h3>
-                                    <p className="text-sm text-slate-500 mb-4">This is the text that appears directly beneath the main heading on the home page.</p>
+                            <div className="space-y-6 md:space-y-8">
+                                <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
+                                    <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-2">Hero Section Subtitle</h3>
+                                    <p className="text-xs md:text-sm text-slate-500 mb-4">This is the text that appears directly beneath the main heading on the home page.</p>
                                     <textarea
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-5 text-slate-900 font-medium resize-none h-32 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition shadow-inner"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-5 text-slate-900 font-medium resize-none h-32 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition shadow-inner"
                                         value={content.hero || ''}
                                         onChange={(e) => setContent({ ...content, hero: e.target.value })}
                                         placeholder="Welcome text..."
                                     />
                                     <div className="mt-6 flex justify-end">
-                                        <button onClick={() => saveContent('hero', content.hero)} className="bg-[#f89e35] hover:bg-[#e08b2c] px-8 py-3 rounded-xl text-white font-bold transition shadow-md shadow-[#f89e35]/20">Update Hero</button>
+                                        <button onClick={() => saveContent('hero', content.hero)} className="w-full md:w-auto bg-[#f89e35] hover:bg-[#e08b2c] px-8 py-3 rounded-xl text-white font-bold transition shadow-md shadow-[#f89e35]/20">Update Hero</button>
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">Career Page Text</h3>
-                                    <p className="text-sm text-slate-500 mb-4">This text introduces the open positions on the career impact page.</p>
+                                <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
+                                    <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-2">Career Page Text</h3>
+                                    <p className="text-xs md:text-sm text-slate-500 mb-4">This text introduces the open positions on the career impact page.</p>
                                     <textarea
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-5 text-slate-900 font-medium resize-none h-40 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition shadow-inner"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-5 text-slate-900 font-medium resize-none h-40 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition shadow-inner"
                                         value={content.career || ''}
                                         onChange={(e) => setContent({ ...content, career: e.target.value })}
                                         placeholder="Career introductory text..."
                                     />
                                     <div className="mt-6 flex justify-end">
-                                        <button onClick={() => saveContent('career', content.career)} className="bg-[#f89e35] hover:bg-[#e08b2c] px-8 py-3 rounded-xl text-white font-bold transition shadow-md shadow-[#f89e35]/20">Update Career</button>
+                                        <button onClick={() => saveContent('career', content.career)} className="w-full md:w-auto bg-[#f89e35] hover:bg-[#e08b2c] px-8 py-3 rounded-xl text-white font-bold transition shadow-md shadow-[#f89e35]/20">Update Career</button>
                                     </div>
                                 </div>
                             </div>
@@ -250,28 +301,39 @@ export default function AdminDashboard() {
 
                     {activeTab === 'projects' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h1 className="text-4xl font-black text-slate-900 mb-2">Manage Ventures</h1>
-                            <p className="text-slate-500 font-medium mb-10">Add, edit, or remove projects from your portfolio.</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Manage Ventures</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Add, edit, or remove projects from your portfolio.</p>
 
-                            <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm mb-10 max-w-2xl transition hover:shadow-md">
-                                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm mb-10 max-w-2xl transition hover:shadow-md">
+                                <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
                                     <span className="bg-[#f89e35]/10 p-2 rounded-lg text-[#f89e35]"><Plus className="w-5 h-5" /></span>
                                     Add New Venture
                                 </h3>
                                 <form onSubmit={addProject} className="space-y-5">
-                                    <input type="text" placeholder="Project Title" required value={newProject.title} onChange={e => setNewProject({ ...newProject, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
+                                    <input type="text" placeholder="Project Title" required value={newProject.title} onChange={e => setNewProject({ ...newProject, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition border-box" />
                                     <textarea placeholder="Small Description" required value={newProject.description} onChange={e => setNewProject({ ...newProject, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition resize-none" rows="3" />
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <select
+                                            value={newProject.category}
+                                            onChange={e => setNewProject({ ...newProject, category: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition"
+                                        >
+                                            <option value="Web Development">Web Development</option>
+                                            <option value="Mobile App">Mobile App</option>
+                                            <option value="AI & ML">AI & ML</option>
+                                            <option value="UI/UX Design">UI/UX Design</option>
+                                            <option value="Digital Marketing">Digital Marketing</option>
+                                        </select>
                                         <input type="url" placeholder="Website Link (https://...)" required value={newProject.link} onChange={e => setNewProject({ ...newProject, link: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
-                                        <input type="url" placeholder="Thumbnail Image URL" required value={newProject.thumbnailUrl} onChange={e => setNewProject({ ...newProject, thumbnailUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
+                                        <input type="url" placeholder="Thumbnail Image URL" required value={newProject.thumbnailUrl} onChange={e => setNewProject({ ...newProject, thumbnailUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition sm:col-span-2" />
                                     </div>
                                     <div className="flex justify-end pt-2">
-                                        <button type="submit" className="bg-[#110f0e] hover:bg-slate-800 text-white font-bold px-8 py-3 rounded-xl transition shadow-md">Publish Project</button>
+                                        <button type="submit" className="w-full md:w-auto bg-[#110f0e] hover:bg-slate-800 text-white font-bold px-8 py-3 rounded-xl transition shadow-md">Publish Project</button>
                                     </div>
                                 </form>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                                 {projects.map(p => (
                                     <div key={p._id} className="bg-white border border-slate-200 rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-xl hover:border-[#f89e35]/30 transition-all duration-300">
                                         <div className="h-48 bg-slate-100 relative">
@@ -280,6 +342,7 @@ export default function AdminDashboard() {
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                         </div>
                                         <div className="p-6">
+                                            <div className="text-[10px] font-black uppercase text-[#f89e35] tracking-widest mb-2 bg-[#f89e35]/10 w-fit px-2 py-0.5 rounded-full">{p.category || 'Web Development'}</div>
                                             <h4 className="font-black text-slate-900 text-lg mb-2">{p.title}</h4>
                                             <p className="text-slate-500 font-medium text-sm line-clamp-2 mb-4">{p.description}</p>
                                             <a href={p.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-[#f89e35] font-bold text-sm hover:text-[#e08b2c]">Visit Site &rarr;</a>
@@ -300,18 +363,18 @@ export default function AdminDashboard() {
 
                     {activeTab === 'careers' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h1 className="text-4xl font-black text-slate-900 mb-2">Career Management</h1>
-                            <p className="text-slate-500 font-medium mb-10">Post new job openings and manage candidate applications.</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Career Management</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Post new job openings and manage candidate applications.</p>
 
-                            <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm mb-10 max-w-2xl transition hover:shadow-md">
-                                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm mb-10 max-w-2xl transition hover:shadow-md">
+                                <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
                                     <span className="bg-[#f89e35]/10 p-2 rounded-lg text-[#f89e35]"><Plus className="w-5 h-5" /></span>
                                     Post New Job
                                 </h3>
                                 <form onSubmit={addJob} className="space-y-5">
                                     <input type="text" placeholder="Job Title" required value={newJob.title} onChange={e => setNewJob({ ...newJob, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
                                     <textarea placeholder="Job Description & Requirements" required value={newJob.description} onChange={e => setNewJob({ ...newJob, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition resize-none" rows="4" />
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <select value={newJob.type} onChange={e => setNewJob({ ...newJob, type: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition">
                                             <option value="Full-time">Full-time</option>
                                             <option value="Part-time">Part-time</option>
@@ -321,31 +384,31 @@ export default function AdminDashboard() {
                                         <input type="text" placeholder="Location (e.g. Remote, Lagos)" required value={newJob.location} onChange={e => setNewJob({ ...newJob, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
                                     </div>
                                     <div className="flex justify-end pt-2">
-                                        <button type="submit" className="bg-[#110f0e] hover:bg-slate-800 text-white font-bold px-8 py-3 rounded-xl transition shadow-md">Post Job</button>
+                                        <button type="submit" className="w-full md:w-auto bg-[#110f0e] hover:bg-slate-800 text-white font-bold px-8 py-3 rounded-xl transition shadow-md">Post Job</button>
                                     </div>
                                 </form>
                             </div>
 
                             <div className="mb-14">
-                                <h3 className="text-2xl font-black text-slate-900 mb-6">Active Jobs</h3>
+                                <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-6">Active Jobs</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {jobs.map(job => (
                                         <div key={job._id} className="bg-white border border-slate-200 p-6 rounded-3xl relative group shadow-sm hover:shadow-md transition">
                                             <div className="mb-4">
                                                 <h4 className="font-bold text-slate-900 text-lg mb-1">{job.title}</h4>
-                                                <div className="flex gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                                <div className="flex gap-2 text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                                                     <span className="bg-slate-100 px-2 py-1 rounded-md">{job.type}</span>
                                                     <span className="bg-slate-100 px-2 py-1 rounded-md">{job.location}</span>
                                                 </div>
                                             </div>
                                             <p className="text-slate-600 font-medium text-sm line-clamp-3 mb-4">{job.description}</p>
-                                            <button onClick={() => deleteJob(job._id)} className="absolute top-4 right-4 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 p-2.5 rounded-full opacity-0 group-hover:opacity-100 transition shadow border border-slate-100 hover:border-red-100">
+                                            <button onClick={() => deleteJob(job._id)} className="absolute top-4 right-4 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 p-2.5 rounded-full opacity-0 lg:group-hover:opacity-100 transition shadow border border-slate-100 hover:border-red-100">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     ))}
                                     {jobs.length === 0 && !loading && (
-                                        <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-500 font-medium">
+                                        <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-500 font-medium text-sm md:text-base">
                                             No active jobs posted.
                                         </div>
                                     )}
@@ -353,26 +416,26 @@ export default function AdminDashboard() {
                             </div>
 
                             <div>
-                                <h3 className="text-2xl font-black text-slate-900 mb-6">Submitted Applications</h3>
+                                <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-6">Submitted Applications</h3>
                                 <div className="space-y-4 max-w-4xl">
                                     {applications.map(app => (
-                                        <div key={app._id} className="bg-white border border-slate-200 p-8 rounded-3xl relative flex flex-col md:flex-row justify-between gap-6 group shadow-sm hover:shadow-md transition">
+                                        <div key={app._id} className="bg-white border border-slate-200 p-6 md:p-8 rounded-3xl relative flex flex-col md:flex-row justify-between gap-6 group shadow-sm hover:shadow-md transition">
                                             <div className="flex-1">
                                                 <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
                                                     <h4 className="font-bold text-slate-900 text-lg">{app.name}</h4>
                                                     <span className="hidden md:block text-slate-300">•</span>
-                                                    <span className="text-[#f89e35] font-bold text-sm bg-[#f89e35]/10 px-3 py-1 rounded-full w-fit">Applied for: {app.jobId?.title || 'Unknown Job'}</span>
+                                                    <span className="text-[#f89e35] font-bold text-xs md:text-sm bg-[#f89e35]/10 px-3 py-1 rounded-full w-fit">Applied for: {app.jobId?.title || 'Unknown Job'}</span>
                                                 </div>
-                                                <div className="flex flex-wrap gap-4 text-sm font-semibold text-slate-500 mb-4">
+                                                <div className="flex flex-wrap gap-4 text-xs md:text-sm font-semibold text-slate-500 mb-4">
                                                     <a href={`mailto:${app.email}`} className="hover:text-[#f89e35]">{app.email}</a>
                                                     {app.phone && <span>{app.phone}</span>}
                                                     {app.resumeLink && <a href={app.resumeLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View Portfolio/Resume</a>}
                                                 </div>
-                                                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-inner">
+                                                <div className="bg-slate-50 p-4 md:p-5 rounded-2xl border border-slate-100 shadow-inner">
                                                     <p className="text-slate-700 font-medium text-sm whitespace-pre-wrap">{app.coverLetter}</p>
                                                 </div>
                                             </div>
-                                            <button onClick={() => deleteApplication(app._id)} className="self-start text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-2 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
+                                            <button onClick={() => deleteApplication(app._id)} className="self-end md:self-start text-slate-300 hover:text-red-500 opacity-0 lg:group-hover:opacity-100 transition p-2 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
                                         </div>
@@ -392,20 +455,20 @@ export default function AdminDashboard() {
 
                     {activeTab === 'service-requests' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h1 className="text-4xl font-black text-slate-900 mb-2">Service Requests</h1>
-                            <p className="text-slate-500 font-medium mb-10">Manage customized service inquiries from your customers.</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Service Requests</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Manage customized service inquiries from your customers.</p>
 
                             <div className="space-y-6">
                                 {serviceRequests.map(req => (
-                                    <div key={req._id} className="bg-white border border-slate-200 p-8 rounded-3xl relative flex flex-col md:flex-row justify-between gap-6 group shadow-sm hover:shadow-md transition">
+                                    <div key={req._id} className="bg-white border border-slate-200 p-6 md:p-8 rounded-3xl relative flex flex-col md:flex-row justify-between gap-6 group shadow-sm hover:shadow-md transition">
                                         <div className="flex-1">
                                             <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
                                                 <h4 className="font-bold text-slate-900 text-xl">{req.customerName}</h4>
                                                 <span className="hidden md:block text-slate-300">•</span>
-                                                <span className="text-[#f89e35] font-black text-sm uppercase tracking-wider bg-[#f89e35]/10 px-4 py-1.5 rounded-full w-fit">{req.serviceName}</span>
+                                                <span className="text-[#f89e35] font-black text-xs md:text-sm uppercase tracking-wider bg-[#f89e35]/10 px-4 py-1.5 rounded-full w-fit">{req.serviceName}</span>
                                             </div>
 
-                                            <div className="flex flex-wrap gap-6 text-sm font-bold text-slate-500 mb-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-4 md:gap-6 text-xs md:text-sm font-bold text-slate-500 mb-6">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-slate-400">Email:</span>
                                                     <a href={`mailto:${req.email}`} className="text-slate-900 hover:text-[#f89e35]">{req.email}</a>
@@ -420,7 +483,7 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
 
-                                            <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 shadow-inner grid md:grid-cols-2 gap-6">
+                                            <div className="bg-slate-50 p-4 md:p-6 rounded-[24px] border border-slate-100 shadow-inner grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                                                 {Object.entries(req.details || {}).map(([key, value]) => (
                                                     <div key={key} className="space-y-1">
                                                         <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
@@ -432,7 +495,7 @@ export default function AdminDashboard() {
                                                 )}
                                             </div>
                                         </div>
-                                        <button onClick={() => deleteServiceRequest(req._id)} className="self-start text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-3 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
+                                        <button onClick={() => deleteServiceRequest(req._id)} className="self-end md:self-start text-slate-300 hover:text-red-500 opacity-0 lg:group-hover:opacity-100 transition p-2 md:p-3 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
                                             <Trash2 className="w-5 h-5" />
                                         </button>
                                     </div>
@@ -451,23 +514,23 @@ export default function AdminDashboard() {
 
                     {activeTab === 'messages' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
-                            <h1 className="text-4xl font-black text-slate-900 mb-2">Contact Forms</h1>
-                            <p className="text-slate-500 font-medium mb-10">Messages sent directly from your website's contact section.</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Contact Forms</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Messages sent directly from your website's contact section.</p>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 md:space-y-6">
                                 {messages.map(msg => (
-                                    <div key={msg._id} className="bg-white border border-slate-200 p-8 rounded-3xl relative flex justify-between gap-6 group shadow-sm hover:shadow-md transition">
+                                    <div key={msg._id} className="bg-white border border-slate-200 p-6 md:p-8 rounded-3xl relative flex flex-col md:flex-row justify-between gap-6 group shadow-sm hover:shadow-md transition">
                                         <div className="flex-1">
-                                            <div className="flex items-center justify-between mb-4">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
                                                 <div>
                                                     <h4 className="font-bold text-slate-900 text-lg">{msg.name}</h4>
                                                     <a href={`mailto:${msg.email}`} className="text-[#f89e35] font-semibold text-sm hover:underline">{msg.email}</a>
                                                 </div>
-                                                <span className="text-slate-400 font-medium text-xs bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">{new Date(msg.createdAt).toLocaleString()}</span>
+                                                <span className="text-slate-400 font-medium text-[10px] md:text-xs bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100 w-fit">{new Date(msg.createdAt).toLocaleString()}</span>
                                             </div>
-                                            <p className="text-slate-700 bg-slate-50 font-medium p-5 rounded-2xl border border-slate-100 leading-relaxed shadow-inner">{msg.message}</p>
+                                            <p className="text-slate-700 bg-slate-50 font-medium p-4 md:p-5 rounded-2xl border border-slate-100 text-sm md:text-base leading-relaxed shadow-inner">{msg.message}</p>
                                         </div>
-                                        <button onClick={() => deleteMessage(msg._id)} className="self-start text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-2 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
+                                        <button onClick={() => deleteMessage(msg._id)} className="self-end md:self-start text-slate-300 hover:text-red-500 opacity-0 lg:group-hover:opacity-100 transition p-2 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
                                             <Trash2 className="w-5 h-5" />
                                         </button>
                                     </div>

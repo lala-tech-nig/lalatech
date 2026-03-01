@@ -16,6 +16,11 @@ const projectSchema = new mongoose.Schema({
     thumbnailUrl: {
         type: String,
         required: true
+    },
+    category: {
+        type: String,
+        required: true,
+        default: 'Web Development'
     }
 }, { timestamps: true });
 

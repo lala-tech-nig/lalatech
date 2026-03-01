@@ -50,7 +50,7 @@ const services = [
     },
     {
         id: 'repairs-and-maintenance',
-        title: 'Hardware Repairs',
+        title: 'Laptop & Phone Repairs',
         description: 'Expert repair and maintenance services for mobile devices, laptops, and professional computing equipment.',
         icon: Wrench,
         color: 'bg-amber-50 text-amber-600'
@@ -113,25 +113,27 @@ export default function ServicesSection() {
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
                 >
                     {services.map((service) => (
-                        <motion.div
+                        <Link
                             key={service.id}
-                            variants={itemVariants}
-                            className="group relative bg-slate-50 border border-slate-100 p-8 rounded-[32px] hover:bg-white hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-300"
+                            href={`/services/${service.id}`}
+                            className="group block"
                         >
-                            <div className={`w-14 h-14 ${service.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                                <service.icon className="w-7 h-7" />
-                            </div>
-                            <h3 className="text-xl font-black text-slate-900 mb-3 leading-tight">{service.title}</h3>
-                            <p className="text-slate-500 font-medium text-sm leading-relaxed mb-8">
-                                {service.description}
-                            </p>
-                            <Link
-                                href={`/services/${service.id}`}
-                                className="inline-flex items-center gap-2 text-sm font-black text-slate-900 hover:text-[#f89e35] transition-colors"
+                            <motion.div
+                                variants={itemVariants}
+                                className="h-full relative bg-slate-50 border border-slate-100 p-8 rounded-[32px] hover:bg-white hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-300"
                             >
-                                Learn More <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                        </motion.div>
+                                <div className={`w-14 h-14 ${service.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                                    <service.icon className="w-7 h-7" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 mb-3 leading-tight">{service.title}</h3>
+                                <p className="text-slate-500 font-medium text-sm leading-relaxed mb-8">
+                                    {service.description}
+                                </p>
+                                <div className="inline-flex items-center gap-2 text-sm font-black text-slate-900 group-hover:text-[#f89e35] transition-colors">
+                                    Learn More <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </motion.div>
+                        </Link>
                     ))}
 
                     {/* Final CTA Card */}

@@ -55,8 +55,8 @@ export default function HeroSection({ content }) {
                     <Link href="/projects" className="bg-[#f89e35] hover:bg-[#e08b2c] text-white shadow-xl shadow-[#f89e35]/20 px-10 py-4 rounded-full font-bold transition">
                         View Projects
                     </Link>
-                    <Link href="/contact" className="border-2 border-slate-200 hover:border-slate-300 text-slate-900 hover:bg-slate-50 px-10 py-4 rounded-full font-bold transition">
-                        Learn More
+                    <Link href="#services" className="border-2 border-slate-200 hover:border-slate-300 text-slate-900 hover:bg-slate-50 px-10 py-4 rounded-full font-bold transition">
+                        Our Services
                     </Link>
                 </motion.div>
             </div>

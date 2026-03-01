@@ -60,7 +60,7 @@ export default function ProjectsSection() {
                         }}
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                     >
-                        {projects.slice(0, 6).map((project, index) => (
+                        {projects.slice(0, 3).map((project, index) => (
                             <motion.div
                                 key={project._id}
                                 variants={{
@@ -78,7 +78,7 @@ export default function ProjectsSection() {
                     </div>
                 )}
 
-                {projects.length > 6 && (
+                {projects.length > 0 && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
