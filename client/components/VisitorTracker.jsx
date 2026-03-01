@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import API_BASE_URL from '@/lib/api';
 
 export default function VisitorTracker() {
     useEffect(() => {
-        fetch('http://localhost:5000/api/stats/increment', { method: 'POST' }).catch(() => { });
+        fetch(`${API_BASE_URL}/stats/increment`, { method: 'POST' }).catch(() => { });
     }, []);
     return null;
 }

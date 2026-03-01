@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 export default function Navbar() {
     const pathname = usePathname();
@@ -10,17 +11,15 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto flex justify-between items-center">
                 {/* Logo matching the image context */}
                 <Link href="/" className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-full bg-[#f89e35] flex items-center justify-center">
-                        <span className="w-3 h-3 rounded-full bg-white"></span>
-                    </span>
+                    <Image src="/bglogo.png" alt="Lala Tech Logo" width={60} height={60} className="object-contain" />
                     <span className="text-xl font-black text-slate-900 tracking-wide uppercase">LALA TECH</span>
                 </Link>
 
                 {/* Center links */}
                 <div className="hidden md:flex gap-8 items-center font-medium text-slate-600 text-sm">
-                    <Link href="/#about" className="hover:text-[#f89e35] transition">About</Link>
-                    <Link href="/#projects" className="hover:text-[#f89e35] transition">Ventures</Link>
-                    <Link href="/career" className={`hover:text-[#f89e35] transition ${pathname === '/career' ? 'text-[#f89e35]' : ''}`}>Impact</Link>
+                    <Link href="/about" className="hover:text-[#f89e35] transition">About</Link>
+                    <Link href="/#services" className="hover:text-[#f89e35] transition">Services</Link>
+                    <Link href="/projects" className="hover:text-[#f89e35] transition">Projects</Link>
                     <Link href="/career" className={`hover:text-[#f89e35] transition ${pathname === '/career' ? 'text-[#f89e35]' : ''}`}>Careers</Link>
                 </div>
 

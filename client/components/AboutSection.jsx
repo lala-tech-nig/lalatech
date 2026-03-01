@@ -1,5 +1,6 @@
 'use client';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 
 export default function AboutSection({ content }) {
     const defaultText = "We are an innovative team of developers, designers, and strategists. We build websites, mobile applications, digital marketing and management systems, hotel management softwares, POS softwares, IOT softwares. We turn ideas into wonderful software solutions to guarantee your success in the digital age.";
@@ -9,9 +10,15 @@ export default function AboutSection({ content }) {
         <section className="py-24 relative overflow-hidden bg-white" id="about">
             <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
 
-                <div className="relative">
+                <motion.div
+                    initial={{ opacity: 0, x: -50 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.7 }}
+                    className="relative"
+                >
                     {/* Light glowing container with actual Logo instead of spinning effect */}
-                    <div className="aspect-square rounded-3xl overflow-hidden glass p-4 shadow-[0_0_50px_rgba(248,158,53,0.1)] border border-[#f89e35]/20 bg-slate-50 relative flex items-center justify-center">
+                    <div className="aspect-square rounded-3xl overflow-hidden glass p-4 shadow-[0_0_50px_rgba(248,158,53,0.1)] border border-[#f89e35]/20 bg-slate-50 relative flex items-center justify-center hover:scale-[1.02] transition-transform duration-500">
 
                         <div className="absolute inset-0 bg-[#f89e35]/5 rounded-2xl"></div>
 
@@ -26,9 +33,14 @@ export default function AboutSection({ content }) {
                         </div>
 
                     </div>
-                </div>
+                </motion.div>
 
-                <div>
+                <motion.div
+                    initial={{ opacity: 0, x: 50 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.7, delay: 0.2 }}
+                >
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-200 text-slate-500 font-bold text-xs tracking-widest uppercase mb-6 bg-slate-50 shadow-sm">
                         Mission
                     </div>
@@ -37,16 +49,16 @@ export default function AboutSection({ content }) {
                         {displayContent}
                     </p>
                     <div className="grid grid-cols-2 gap-6">
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm transition hover:shadow-md hover:bg-white">
+                        <motion.div whileHover={{ y: -5 }} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm transition hover:shadow-md hover:bg-white">
                             <h4 className="text-4xl font-black text-[#f89e35] mb-2 tracking-tighter">50+</h4>
                             <p className="text-slate-600 text-sm font-bold">Projects Delivered</p>
-                        </div>
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm transition hover:shadow-md hover:bg-white">
+                        </motion.div>
+                        <motion.div whileHover={{ y: -5 }} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm transition hover:shadow-md hover:bg-white">
                             <h4 className="text-4xl font-black text-[#f89e35] mb-2 tracking-tighter">100%</h4>
                             <p className="text-slate-600 text-sm font-bold">Client Satisfaction</p>
-                        </div>
+                        </motion.div>
                     </div>
-                </div>
+                </motion.div>
             </div>
         </section>
     );

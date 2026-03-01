@@ -1,5 +1,6 @@
 import HeroSection from '@/components/HeroSection';
 import AboutSection from '@/components/AboutSection';
+import ServicesSection from '@/components/ServicesSection';
 import ProjectsSection from '@/components/ProjectsSection';
 import ContactSection from '@/components/ContactSection';
 
@@ -20,6 +21,7 @@ export default async function Home() {
     <>
       <HeroSection content={content.hero} />
       <AboutSection content={content.about} />
+      <ServicesSection />
       <ProjectsSection />
       <ContactSection />
     </>

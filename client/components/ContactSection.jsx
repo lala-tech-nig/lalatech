@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import Confetti from 'react-confetti';
 import { Send, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import API_BASE_URL from '@/lib/api';
 
 export default function ContactSection() {
     const [formData, setFormData] = useState({ name: '', email: '', message: '' });
@@ -19,7 +21,7 @@ export default function ContactSection() {
         setLoading(true);
 
         try {
-            const res = await fetch('http://localhost:5000/api/contacts', {
+            const res = await fetch(`${API_BASE_URL}/contacts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -50,19 +52,31 @@ export default function ContactSection() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-2xl bg-[#f89e35]/5 rounded-full blur-[120px] pointer-events-none"></div>
 
             <div className="max-w-4xl mx-auto px-6 relative z-10">
-                <div className="text-center mb-16">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 font-bold text-xs tracking-widest uppercase mb-6 transition-all duration-500 shadow-sm">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6 }}
+                    className="text-center mb-16"
+                >
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 font-bold text-xs tracking-widest uppercase mb-6 shadow-sm">
                         Contact
                     </div>
-                    <h2 className="text-4xl md:text-5xl font-black mb-6 text-slate-900 tracking-tight transition-all duration-500">
+                    <h2 className="text-4xl md:text-5xl font-black mb-6 text-slate-900 tracking-tight">
                         Get In <span className="text-[#f89e35]">Touch</span>
                     </h2>
-                    <p className="text-slate-600 font-medium transition-all duration-500 delay-100">
+                    <p className="text-slate-600 font-medium">
                         Ready to turn your ideas into wonderful software solutions? Send us a message!
                     </p>
-                </div>
+                </motion.div>
 
-                <div className="bg-slate-50 border border-slate-200 p-8 md:p-12 rounded-3xl shadow-lg transition-all duration-700">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.7, delay: 0.2 }}
+                    className="bg-slate-50 border border-slate-200 p-8 md:p-12 rounded-3xl shadow-lg"
+                >
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid md:grid-cols-2 gap-6">
                             <div>
@@ -112,7 +126,7 @@ export default function ContactSection() {
                             )}
                         </button>
                     </form>
-                </div>
+                </motion.div>
             </div>
         </section>
     );

@@ -1,19 +1,24 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
+import API_BASE_URL from '@/lib/api';
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
     const [stats, setStats] = useState({ visitors: 0 });
     const [messages, setMessages] = useState([]);
     const [projects, setProjects] = useState([]);
-    const [content, setContent] = useState({ hero: '', about: '' });
+    const [content, setContent] = useState({ hero: '', about: '', career: '' });
+    const [jobs, setJobs] = useState([]);
+    const [applications, setApplications] = useState([]);
+    const [serviceRequests, setServiceRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // New Project Form
+    // New Forms
     const [newProject, setNewProject] = useState({ title: '', description: '', link: '', thumbnailUrl: '' });
+    const [newJob, setNewJob] = useState({ title: '', description: '', type: 'Full-time', location: 'Remote' });
 
     useEffect(() => {
         fetchData();
@@ -23,18 +28,26 @@ export default function AdminDashboard() {
         setLoading(true);
         try {
             if (activeTab === 'overview') {
-                const res = await fetch('http://localhost:5000/api/stats');
+                const res = await fetch(`${API_BASE_URL}/stats`);
                 const data = await res.json();
                 setStats({ visitors: data.count || 0 });
             } else if (activeTab === 'messages') {
-                const res = await fetch('http://localhost:5000/api/contacts');
+                const res = await fetch(`${API_BASE_URL}/contacts`);
                 setMessages(await res.json());
             } else if (activeTab === 'projects') {
-                const res = await fetch('http://localhost:5000/api/projects');
+                const res = await fetch(`${API_BASE_URL}/projects`);
                 setProjects(await res.json());
             } else if (activeTab === 'content') {
-                const res = await fetch('http://localhost:5000/api/content');
+                const res = await fetch(`${API_BASE_URL}/content`);
                 setContent(await res.json());
+            } else if (activeTab === 'careers') {
+                const jobsRes = await fetch(`${API_BASE_URL}/jobs`);
+                const appsRes = await fetch(`${API_BASE_URL}/applications`);
+                setJobs(await jobsRes.json());
+                setApplications(await appsRes.json());
+            } else if (activeTab === 'service-requests') {
+                const res = await fetch(`${API_BASE_URL}/service-requests`);
+                setServiceRequests(await res.json());
             }
         } catch (err) {
             toast.error('Failed to load data');
@@ -43,10 +56,19 @@ export default function AdminDashboard() {
         }
     };
 
+    const deleteServiceRequest = async (id) => {
+        if (!confirm('Delete this service request?')) return;
+        try {
+            await fetch(`${API_BASE_URL}/service-requests/${id}`, { method: 'DELETE' });
+            toast.success('Request deleted');
+            fetchData();
+        } catch (err) { toast.error('Error deleting request'); }
+    };
+
     const deleteMessage = async (id) => {
         if (!confirm('Delete this message?')) return;
         try {
-            await fetch(`http://localhost:5000/api/contacts/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/contacts/${id}`, { method: 'DELETE' });
             toast.success('Message deleted');
             fetchData();
         } catch (err) { toast.error('Error deleting message'); }
@@ -55,7 +77,7 @@ export default function AdminDashboard() {
     const deleteProject = async (id) => {
         if (!confirm('Delete this project?')) return;
         try {
-            await fetch(`http://localhost:5000/api/projects/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/projects/${id}`, { method: 'DELETE' });
             toast.success('Project deleted');
             fetchData();
         } catch (err) { toast.error('Error deleting project'); }
@@ -64,7 +86,7 @@ export default function AdminDashboard() {
     const addProject = async (e) => {
         e.preventDefault();
         try {
-            await fetch('http://localhost:5000/api/projects', {
+            await fetch(`${API_BASE_URL}/projects`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newProject)
@@ -75,9 +97,41 @@ export default function AdminDashboard() {
         } catch (err) { toast.error('Error adding project'); }
     };
 
+    const deleteJob = async (id) => {
+        if (!confirm('Delete this job?')) return;
+        try {
+            await fetch(`${API_BASE_URL}/jobs/${id}`, { method: 'DELETE' });
+            toast.success('Job deleted');
+            fetchData();
+        } catch (err) { toast.error('Error deleting job'); }
+    };
+
+    const addJob = async (e) => {
+        e.preventDefault();
+        try {
+            await fetch(`${API_BASE_URL}/jobs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newJob)
+            });
+            toast.success('Job posted');
+            setNewJob({ title: '', description: '', type: 'Full-time', location: 'Remote' });
+            fetchData();
+        } catch (err) { toast.error('Error posting job'); }
+    };
+
+    const deleteApplication = async (id) => {
+        if (!confirm('Delete this application?')) return;
+        try {
+            await fetch(`${API_BASE_URL}/applications/${id}`, { method: 'DELETE' });
+            toast.success('Application deleted');
+            fetchData();
+        } catch (err) { toast.error('Error deleting application'); }
+    };
+
     const saveContent = async (section, text) => {
         try {
-            await fetch('http://localhost:5000/api/content', {
+            await fetch(`${API_BASE_URL}/content`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ section, text })
@@ -107,14 +161,16 @@ export default function AdminDashboard() {
                             { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
                             { id: 'content', icon: FileText, label: 'Content Manager' },
                             { id: 'projects', icon: Briefcase, label: 'Ventures' },
+                            { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
+                            { id: 'careers', icon: Users, label: 'Careers' },
                             { id: 'messages', icon: MessageSquare, label: 'Messages' },
                         ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all duration-200 ${activeTab === tab.id
-                                        ? 'bg-[#f89e35] text-white shadow-md shadow-[#f89e35]/20 transform scale-[1.02]'
-                                        : 'text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm'
+                                    ? 'bg-[#f89e35] text-white shadow-md shadow-[#f89e35]/20 transform scale-[1.02]'
+                                    : 'text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm'
                                     }`}
                             >
                                 <tab.icon className="w-5 h-5" />
@@ -176,16 +232,16 @@ export default function AdminDashboard() {
                                 </div>
 
                                 <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">About Us Text</h3>
-                                    <p className="text-sm text-slate-500 mb-4">This appears in the "Who We Are" section.</p>
+                                    <h3 className="text-xl font-bold text-slate-900 mb-2">Career Page Text</h3>
+                                    <p className="text-sm text-slate-500 mb-4">This text introduces the open positions on the career impact page.</p>
                                     <textarea
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-5 text-slate-900 font-medium resize-none h-40 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition shadow-inner"
-                                        value={content.about || ''}
-                                        onChange={(e) => setContent({ ...content, about: e.target.value })}
-                                        placeholder="About us text..."
+                                        value={content.career || ''}
+                                        onChange={(e) => setContent({ ...content, career: e.target.value })}
+                                        placeholder="Career introductory text..."
                                     />
                                     <div className="mt-6 flex justify-end">
-                                        <button onClick={() => saveContent('about', content.about)} className="bg-[#f89e35] hover:bg-[#e08b2c] px-8 py-3 rounded-xl text-white font-bold transition shadow-md shadow-[#f89e35]/20">Update About</button>
+                                        <button onClick={() => saveContent('career', content.career)} className="bg-[#f89e35] hover:bg-[#e08b2c] px-8 py-3 rounded-xl text-white font-bold transition shadow-md shadow-[#f89e35]/20">Update Career</button>
                                     </div>
                                 </div>
                             </div>
@@ -236,6 +292,157 @@ export default function AdminDashboard() {
                                 {projects.length === 0 && !loading && (
                                     <div className="col-span-full text-center py-12 bg-white rounded-3xl border border-slate-200 border-dashed">
                                         <p className="text-slate-500 font-medium">Your portfolio is currently empty.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'careers' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-4xl font-black text-slate-900 mb-2">Career Management</h1>
+                            <p className="text-slate-500 font-medium mb-10">Post new job openings and manage candidate applications.</p>
+
+                            <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm mb-10 max-w-2xl transition hover:shadow-md">
+                                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                    <span className="bg-[#f89e35]/10 p-2 rounded-lg text-[#f89e35]"><Plus className="w-5 h-5" /></span>
+                                    Post New Job
+                                </h3>
+                                <form onSubmit={addJob} className="space-y-5">
+                                    <input type="text" placeholder="Job Title" required value={newJob.title} onChange={e => setNewJob({ ...newJob, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
+                                    <textarea placeholder="Job Description & Requirements" required value={newJob.description} onChange={e => setNewJob({ ...newJob, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition resize-none" rows="4" />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <select value={newJob.type} onChange={e => setNewJob({ ...newJob, type: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition">
+                                            <option value="Full-time">Full-time</option>
+                                            <option value="Part-time">Part-time</option>
+                                            <option value="Contract">Contract</option>
+                                            <option value="Internship">Internship</option>
+                                        </select>
+                                        <input type="text" placeholder="Location (e.g. Remote, Lagos)" required value={newJob.location} onChange={e => setNewJob({ ...newJob, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
+                                    </div>
+                                    <div className="flex justify-end pt-2">
+                                        <button type="submit" className="bg-[#110f0e] hover:bg-slate-800 text-white font-bold px-8 py-3 rounded-xl transition shadow-md">Post Job</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div className="mb-14">
+                                <h3 className="text-2xl font-black text-slate-900 mb-6">Active Jobs</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {jobs.map(job => (
+                                        <div key={job._id} className="bg-white border border-slate-200 p-6 rounded-3xl relative group shadow-sm hover:shadow-md transition">
+                                            <div className="mb-4">
+                                                <h4 className="font-bold text-slate-900 text-lg mb-1">{job.title}</h4>
+                                                <div className="flex gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                                                    <span className="bg-slate-100 px-2 py-1 rounded-md">{job.type}</span>
+                                                    <span className="bg-slate-100 px-2 py-1 rounded-md">{job.location}</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-slate-600 font-medium text-sm line-clamp-3 mb-4">{job.description}</p>
+                                            <button onClick={() => deleteJob(job._id)} className="absolute top-4 right-4 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 p-2.5 rounded-full opacity-0 group-hover:opacity-100 transition shadow border border-slate-100 hover:border-red-100">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {jobs.length === 0 && !loading && (
+                                        <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-500 font-medium">
+                                            No active jobs posted.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 mb-6">Submitted Applications</h3>
+                                <div className="space-y-4 max-w-4xl">
+                                    {applications.map(app => (
+                                        <div key={app._id} className="bg-white border border-slate-200 p-8 rounded-3xl relative flex flex-col md:flex-row justify-between gap-6 group shadow-sm hover:shadow-md transition">
+                                            <div className="flex-1">
+                                                <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
+                                                    <h4 className="font-bold text-slate-900 text-lg">{app.name}</h4>
+                                                    <span className="hidden md:block text-slate-300">•</span>
+                                                    <span className="text-[#f89e35] font-bold text-sm bg-[#f89e35]/10 px-3 py-1 rounded-full w-fit">Applied for: {app.jobId?.title || 'Unknown Job'}</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-4 text-sm font-semibold text-slate-500 mb-4">
+                                                    <a href={`mailto:${app.email}`} className="hover:text-[#f89e35]">{app.email}</a>
+                                                    {app.phone && <span>{app.phone}</span>}
+                                                    {app.resumeLink && <a href={app.resumeLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View Portfolio/Resume</a>}
+                                                </div>
+                                                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-inner">
+                                                    <p className="text-slate-700 font-medium text-sm whitespace-pre-wrap">{app.coverLetter}</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => deleteApplication(app._id)} className="self-start text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-2 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {applications.length === 0 && !loading && (
+                                        <div className="py-12 bg-white rounded-3xl border border-slate-200 border-dashed text-center">
+                                            <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                                <Users className="w-8 h-8" />
+                                            </div>
+                                            <p className="text-slate-500 font-medium">No applications have been submitted yet.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'service-requests' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-4xl font-black text-slate-900 mb-2">Service Requests</h1>
+                            <p className="text-slate-500 font-medium mb-10">Manage customized service inquiries from your customers.</p>
+
+                            <div className="space-y-6">
+                                {serviceRequests.map(req => (
+                                    <div key={req._id} className="bg-white border border-slate-200 p-8 rounded-3xl relative flex flex-col md:flex-row justify-between gap-6 group shadow-sm hover:shadow-md transition">
+                                        <div className="flex-1">
+                                            <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
+                                                <h4 className="font-bold text-slate-900 text-xl">{req.customerName}</h4>
+                                                <span className="hidden md:block text-slate-300">•</span>
+                                                <span className="text-[#f89e35] font-black text-sm uppercase tracking-wider bg-[#f89e35]/10 px-4 py-1.5 rounded-full w-fit">{req.serviceName}</span>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-6 text-sm font-bold text-slate-500 mb-6">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-slate-400">Email:</span>
+                                                    <a href={`mailto:${req.email}`} className="text-slate-900 hover:text-[#f89e35]">{req.email}</a>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-slate-400">Phone:</span>
+                                                    <span className="text-slate-900">{req.phone}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-slate-400">Date:</span>
+                                                    <span className="text-slate-900">{new Date(req.createdAt).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 shadow-inner grid md:grid-cols-2 gap-6">
+                                                {Object.entries(req.details || {}).map(([key, value]) => (
+                                                    <div key={key} className="space-y-1">
+                                                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                                        <p className="text-slate-900 font-bold text-sm leading-relaxed">{value}</p>
+                                                    </div>
+                                                ))}
+                                                {Object.keys(req.details || {}).length === 0 && (
+                                                    <p className="text-slate-400 text-sm font-medium italic">No additional details provided.</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button onClick={() => deleteServiceRequest(req._id)} className="self-start text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-3 bg-white rounded-full hover:bg-red-50 shadow-sm border border-transparent hover:border-red-100">
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {serviceRequests.length === 0 && !loading && (
+                                    <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 border-dashed">
+                                        <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                            <Wrench className="w-8 h-8" />
+                                        </div>
+                                        <p className="text-slate-500 font-medium">No service requests found.</p>
                                     </div>
                                 )}
                             </div>

@@ -8,6 +8,9 @@ const projectRoutes = require('./routes/projectRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const visitorRoutes = require('./routes/visitorRoutes');
 const contentRoutes = require('./routes/contentRoutes');
+const jobRoutes = require('./routes/jobRoutes');
+const applicationRoutes = require('./routes/applicationRoutes');
+const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,6 +23,9 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/stats', visitorRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/service-requests', serviceRequestRoutes);
 
 app.get('/api/test', (req, res) => {
     res.json({ message: 'Lala Tech API is running' });
