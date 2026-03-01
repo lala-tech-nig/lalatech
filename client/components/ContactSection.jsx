@@ -28,7 +28,7 @@ export default function ContactSection() {
             if (!res.ok) throw new Error('Failed to send message');
 
             toast.success('Message sent successfully!', {
-                style: { background: '#f89e35', color: '#110f0e', fontWeight: 'bold' }
+                style: { background: '#f89e35', color: '#ffffff', fontWeight: 'bold' }
             });
             setShowConfetti(true);
             setFormData({ name: '', email: '', message: '' });
@@ -43,66 +43,66 @@ export default function ContactSection() {
     };
 
     return (
-        <section className="py-24 relative bg-[#110f0e]" id="contact">
-            {showConfetti && mounted && <Confetti recycle={false} numberOfPieces={500} colors={['#f89e35', '#ffffff', '#e08b2c']} className="!fixed !top-0 !left-0 !z-[100]" />}
+        <section className="py-24 relative bg-white" id="contact">
+            {showConfetti && mounted && <Confetti recycle={false} numberOfPieces={500} colors={['#f89e35', '#000000', '#e08b2c']} className="!fixed !top-0 !left-0 !z-[100]" />}
 
             {/* Subtle glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-2xl bg-[#f89e35]/5 rounded-full blur-[120px] pointer-events-none"></div>
 
             <div className="max-w-4xl mx-auto px-6 relative z-10">
                 <div className="text-center mb-16">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 text-slate-400 text-xs tracking-widest uppercase mb-6 bg-white/5 transition-all duration-500 translate-y-0 opacity-100">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50 font-bold text-xs tracking-widest uppercase mb-6 transition-all duration-500 shadow-sm">
                         Contact
                     </div>
-                    <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white tracking-tight transition-all duration-500 translate-y-0 opacity-100">
+                    <h2 className="text-4xl md:text-5xl font-black mb-6 text-slate-900 tracking-tight transition-all duration-500">
                         Get In <span className="text-[#f89e35]">Touch</span>
                     </h2>
-                    <p className="text-slate-400 font-light transition-all duration-500 delay-100 translate-y-0 opacity-100">
+                    <p className="text-slate-600 font-medium transition-all duration-500 delay-100">
                         Ready to turn your ideas into wonderful software solutions? Send us a message!
                     </p>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 p-8 md:p-12 rounded-3xl backdrop-blur-sm transition-all duration-700 translate-y-0 opacity-100">
+                <div className="bg-slate-50 border border-slate-200 p-8 md:p-12 rounded-3xl shadow-lg transition-all duration-700">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Name</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Name</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full bg-[#0a0908] border border-white/10 rounded-xl px-4 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-[#f89e35] focus:ring-1 focus:ring-[#f89e35] transition"
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f89e35] focus:ring-1 focus:ring-[#f89e35] transition shadow-sm"
                                     placeholder="John Doe"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Email</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
                                 <input
                                     type="email"
                                     required
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="w-full bg-[#0a0908] border border-white/10 rounded-xl px-4 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-[#f89e35] focus:ring-1 focus:ring-[#f89e35] transition"
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f89e35] focus:ring-1 focus:ring-[#f89e35] transition shadow-sm"
                                     placeholder="john@example.com"
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Message</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Message</label>
                             <textarea
                                 required
                                 rows="5"
                                 value={formData.message}
                                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                                className="w-full bg-[#0a0908] border border-white/10 rounded-xl px-4 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-[#f89e35] focus:ring-1 focus:ring-[#f89e35] transition resize-none"
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#f89e35] focus:ring-1 focus:ring-[#f89e35] transition resize-none shadow-sm"
                                 placeholder="How can we help you?"
                             ></textarea>
                         </div>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-[#f89e35] hover:bg-[#e08b2c] text-[#110f0e] font-bold py-4 rounded-xl transition flex justify-center items-center gap-2 group disabled:opacity-50"
+                            className="w-full bg-[#f89e35] hover:bg-[#e08b2c] text-white font-black py-4 rounded-xl transition flex justify-center items-center gap-2 group disabled:opacity-50 shadow-md shadow-[#f89e35]/20"
                         >
                             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                                 <>

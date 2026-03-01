@@ -23,16 +23,16 @@ export default function ProjectsSection() {
     }, []);
 
     return (
-        <section className="py-24 relative bg-[#0a0908]" id="projects">
+        <section className="py-24 relative bg-slate-50" id="projects">
             <div className="max-w-7xl mx-auto px-6">
                 <div className="text-center mb-16">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#f89e35]/30 text-[#f89e35] text-xs tracking-widest uppercase mb-6 bg-[#f89e35]/5">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#f89e35]/30 text-[#f89e35] bg-white font-bold text-xs tracking-widest uppercase mb-6 shadow-sm">
                         Portfolio
                     </div>
-                    <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white tracking-tight">
+                    <h2 className="text-4xl md:text-5xl font-black mb-6 text-slate-900 tracking-tight">
                         Featured <span className="text-[#f89e35]">Ventures</span>
                     </h2>
-                    <p className="text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
+                    <p className="text-slate-600 max-w-2xl mx-auto font-medium leading-relaxed">
                         A showcase of our best work. Modern websites designed to scale.
                     </p>
                 </div>
@@ -48,8 +48,8 @@ export default function ProjectsSection() {
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-white/5 border border-white/10 p-12 text-center rounded-3xl">
-                        <p className="text-slate-500 text-lg">More projects being added soon.</p>
+                    <div className="bg-white border border-slate-200 p-12 text-center rounded-3xl shadow-sm">
+                        <p className="text-slate-500 text-lg font-medium">More projects being added soon.</p>
                     </div>
                 )}
             </div>

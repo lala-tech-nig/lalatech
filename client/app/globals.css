@@ -11,12 +11,10 @@
 }
 
 :root {
-  /* Match the reference image's dark brown/black background */
-  --background: #110f0e;
-  --foreground: #ffffff;
-  /* Match the reference image's orange button and accents */
+  --background: #ffffff;
+  --foreground: #000000;
   --primary: #f89e35;
-  --card: rgba(30, 25, 20, 0.7);
+  --card: #ffffff;
 }
 
 body {
@@ -48,17 +46,18 @@ body {
   animation: blob 7s infinite;
 }
 
+/* Updated glassmorphism for light theme */
 .glass {
-  background: var(--card);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
 }
 
 .heading-gradient {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-image: linear-gradient(to right, #ffffff, #f1f5f9);
+  background-image: linear-gradient(to right, #000000, #333333);
 }
