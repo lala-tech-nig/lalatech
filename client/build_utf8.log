@@ -1,0 +1,185 @@
+﻿
+> lalatech@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+node.exe : Error: 
+`@source` paths must 
+be quoted.
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Users\LALA 
+TECH\AppData\Roam ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Error: `@sour   
+ ce` paths must be     
+quoted.:String) []    
+, RemoteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+    [2m[at 
+C:\Users\LALA TECH\Desk
+top\lalatech\client\nod
+e_modules\tailwindcss\d
+ist\lib.js:32:4400][0m
+    [2m[at Rr 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\tailwindcss\
+dist\lib.js:3:1718)][0
+m
+    [2m[at _ 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\tailwindcss\
+dist\lib.js:3:1377)][0
+m
+    [2m[at un 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\tailwindcss\
+dist\lib.js:32:2712)][
+0m
+    [2m[at async cn 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\tailwindcss\
+dist\lib.js:38:631)][0
+m
+    [2m[at async Xr 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\@tailwindcss
+\node\dist\index.js:10:
+3417)][0m
+    [2m[at async I 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\@tailwindcss
+\postcss\dist\index.js:
+10:3977)][0m
+    [2m[at async 
+Object.Once 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\@tailwindcss
+\postcss\dist\index.js:
+10:4249)][0m
+    [2mat async 
+LazyResult.runAsync (no
+de_modules/postcss/lib/
+lazy-result.js:293:11) 
+[C:\Users\LALA TECH\Des
+ktop\lalatech\client\.n
+ext\build\chunks\node_m
+odules_fe693df6._.js:62
+06:21][0m
+    [2mat async 
+transform (turbopack://
+/[turbopack-node]/trans
+forms/postcss.ts:70:34)
+ [C:\Users\LALA TECH\De
+sktop\lalatech\client\.
+next\build\chunks\[root
+-of-the-server]__51225d
+af._.js:146:36][0m
+
+> Build error occurred
+Error: Turbopack build 
+failed with 1 errors:
+./app/globals.css
+Error evaluating 
+Node.js code
+CssSyntaxError: 
+tailwindcss: 
+C:\Users\LALA TECH\Desk
+top\lalatech\client\app
+\globals.css:1:1: 
+`@source` paths must 
+be quoted.
+    at Input.error (nod
+e_modules/postcss/lib/i
+nput.js:135:16) 
+[C:\Users\LALA TECH\Des
+ktop\lalatech\client\.n
+ext\build\chunks\node_m
+odules_fe693df6._.js:46
+51:22]
+    at Root.error (node
+_modules/postcss/lib/no
+de.js:146:32) 
+[C:\Users\LALA TECH\Des
+ktop\lalatech\client\.n
+ext\build\chunks\node_m
+odules_fe693df6._.js:92
+8:38]
+    [at Object.Once 
+(C:\Users\LALA TECH\Des
+ktop\lalatech\client\no
+de_modules\@tailwindcss
+\postcss\dist\index.js:
+10:6911)]
+    at async 
+LazyResult.runAsync (no
+de_modules/postcss/lib/
+lazy-result.js:293:11) 
+[C:\Users\LALA TECH\Des
+ktop\lalatech\client\.n
+ext\build\chunks\node_m
+odules_fe693df6._.js:62
+06:21]
+    at async transform 
+(turbopack:///[turbopac
+k-node]/transforms/post
+css.ts:70:34) 
+[C:\Users\LALA TECH\Des
+ktop\lalatech\client\.n
+ext\build\chunks\[root-
+of-the-server]__51225da
+f._.js:146:36]
+    at async run (turbo
+pack:///[turbopack-node
+]/ipc/evaluate.ts:92:23
+) [C:\Users\LALA TECH\D
+esktop\lalatech\client\
+.next\build\chunks\[roo
+t-of-the-server]__97494
+1ed._.js:443:31]
+
+Import trace:
+  Client Component 
+Browser:
+    ./app/globals.css 
+[Client Component 
+Browser]
+    ./app/layout.js 
+[Server Component]
+
+
+    at async transform 
+(turbopack:///[turbopac
+k-node]/transforms/post
+css.ts:70:34) 
+[C:\Users\LALA TECH\Des
+ktop\lalatech\client\.n
+ext\build\chunks\[root-
+of-the-server]__51225da
+f._.js:146:36])
+    at async run (turbo
+pack:///[turbopack-node
+]/ipc/evaluate.ts:92:23
+) [C:\Users\LALA TECH\D
+esktop\lalatech\client\
+.next\build\chunks\[roo
+t-of-the-server]__97494
+1ed._.js:443:31])
