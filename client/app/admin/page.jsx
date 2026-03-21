@@ -218,18 +218,25 @@ export default function AdminDashboard() {
         } catch (e) {}
         setActiveFeedComments(postId);
     };
-    const sendAdminReply = async (commentId, postId) => {
+    const sendAdminReply = async (commentId, postId, postType = 'post') => {
         const text = adminReplies[commentId]?.trim();
         if (!text) return;
         try {
-            const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
+            const res = await fetch(`${API_BASE_URL}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ author: 'Lala Tech Admin', content: text, isAdmin: true }),
+                body: JSON.stringify({ 
+                    postId, 
+                    postType, 
+                    parentId: commentId,
+                    author: 'Lala Tech Admin', 
+                    content: text, 
+                    isAdmin: true 
+                }),
             });
             if (res.ok) {
-                const updated = await res.json();
-                setFeedComments(prev => ({ ...prev, [postId]: (prev[postId] || []).map(c => c._id === commentId ? updated : c) }));
+                const newReply = await res.json();
+                setFeedComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), newReply] }));
                 setAdminReplies(prev => ({ ...prev, [commentId]: '' }));
                 toast.success('Reply sent');
             }
@@ -1089,35 +1096,44 @@ export default function AdminDashboard() {
                                                         {(feedComments[p._id] || []).length === 0 ? (
                                                             <p className="text-xs text-slate-400 italic">No comments yet.</p>
                                                         ) : (
-                                                            feedComments[p._id].map(comment => (
-                                                                <div key={comment._id} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                                                                    <div className="flex justify-between items-start mb-2">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-bold text-xs text-slate-900">{comment.author}</span>
-                                                                            {comment.isAdmin && <span className="bg-[#f89e35] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-black">Admin</span>}
+                                                            // Recursive comment renderer
+                                                            (() => {
+                                                                const all = feedComments[p._id] || [];
+                                                                const renderTree = (parentId = null, depth = 0) => {
+                                                                    return all.filter(c => c.parentId === parentId).sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt)).map(comment => (
+                                                                        <div key={comment._id} className={`${depth > 0 ? 'ml-6 mt-3 border-l-2 border-orange-100 pl-4' : 'bg-slate-50 rounded-2xl p-4 border border-slate-100'}`}>
+                                                                            <div className="flex justify-between items-start mb-2">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-bold text-xs text-slate-900">{comment.author}</span>
+                                                                                    {comment.isAdmin && <span className="bg-[#f89e35] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-black">Admin</span>}
+                                                                                </div>
+                                                                                <span className="text-[10px] text-slate-400 italic">{new Date(comment.createdAt).toLocaleString()}</span>
+                                                                            </div>
+                                                                            <p className="text-xs text-slate-600 mb-3">{comment.content}</p>
+                                                                            
+                                                                            <div className="flex gap-2">
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    placeholder={`Reply to ${comment.author}...`} 
+                                                                                    value={adminReplies[comment._id] || ''} 
+                                                                                    onChange={e => setAdminReplies({ ...adminReplies, [comment._id]: e.target.value })}
+                                                                                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#f89e35]"
+                                                                                />
+                                                                                <button 
+                                                                                    onClick={() => sendAdminReply(comment._id, p._id)}
+                                                                                    className="bg-[#f89e35] text-white p-1.5 rounded-lg hover:bg-orange-600 transition"
+                                                                                >
+                                                                                    <Reply className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                            </div>
+
+                                                                            {/* Recursive children */}
+                                                                            {renderTree(comment._id, depth + 1)}
                                                                         </div>
-                                                                        <span className="text-[10px] text-slate-400 italic">{new Date(comment.createdAt).toLocaleString()}</span>
-                                                                    </div>
-                                                                    <p className="text-xs text-slate-600 mb-3">{comment.content}</p>
-                                                                    
-                                                                    {/* Admin Reply Input */}
-                                                                    <div className="flex gap-2">
-                                                                        <input 
-                                                                            type="text" 
-                                                                            placeholder="Reply as Admin..." 
-                                                                            value={adminReplies[comment._id] || ''} 
-                                                                            onChange={e => setAdminReplies({ ...adminReplies, [comment._id]: e.target.value })}
-                                                                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#f89e35]"
-                                                                        />
-                                                                        <button 
-                                                                            onClick={() => sendAdminReply(comment._id, p._id)}
-                                                                            className="bg-slate-900 text-white p-1.5 rounded-lg hover:bg-slate-800 transition"
-                                                                        >
-                                                                            <Reply className="w-3.5 h-3.5" />
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            ))
+                                                                    ));
+                                                                };
+                                                                return renderTree();
+                                                            })()
                                                         )}
                                                     </motion.div>
                                                 )}

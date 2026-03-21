@@ -94,17 +94,20 @@ export default function NewsArticlePage() {
         if (!replyText.trim()) return;
         setSubmitting(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
+            const res = await fetch(`${API_BASE_URL}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    postId: slug,
+                    postType: 'news',
+                    parentId: commentId,
                     author: replyAuthor.trim() || 'Anonymous',
                     content: replyText.trim(),
                 }),
             });
             if (res.ok) {
-                const updated = await res.json();
-                setComments(prev => prev.map(c => c._id === commentId ? updated : c));
+                const newReply = await res.json();
+                setComments(prev => [newReply, ...prev]);
                 setReplyingTo(null);
                 setReplyText('');
                 setReplyAuthor('');
@@ -289,99 +292,99 @@ export default function NewsArticlePage() {
 
                     {/* Comments list */}
                     <AnimatePresence>
-                        {comments.map((comment) => (
-                            <motion.div
-                                key={comment._id}
-                                className="comment-card"
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                            >
-                                <div className="comment-author">
-                                    <div className="comment-avatar" style={{ background: comment.isAdmin ? 'linear-gradient(135deg, #f89e35, #f56e00)' : 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
-                                        {(comment.author || 'A')[0].toUpperCase()}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span className="comment-name">{comment.author || 'Anonymous'}</span>
-                                            {comment.isAdmin && <span className="admin-badge">Admin</span>}
-                                        </div>
-                                        <div className="comment-time">{formatDate(comment.createdAt)}</div>
-                                    </div>
-                                </div>
-                                <p className="comment-text">{comment.content}</p>
-                                <div className="comment-actions">
-                                    <button className="comment-action-btn" onClick={() => likeComment(comment._id)}>
-                                        <Heart size={14} /> {comment.likes > 0 && comment.likes}
-                                    </button>
-                                    <button className="comment-action-btn" onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}>
-                                        <MessageCircle size={14} /> Reply
-                                        {comment.replies?.length > 0 && ` (${comment.replies.length})`}
-                                    </button>
-                                    {comment.replies?.length > 0 && (
-                                        <button className="comment-action-btn" onClick={() => setExpandedReplies(p => ({ ...p, [comment._id]: !p[comment._id] }))}>
-                                            <ChevronDown size={14} style={{ transition: '0.2s', transform: expandedReplies[comment._id] ? 'rotate(180deg)' : '' }} />
-                                            {expandedReplies[comment._id] ? 'Hide' : 'View'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Replies */}
-                                <AnimatePresence>
-                                    {expandedReplies[comment._id] && comment.replies?.length > 0 && (
-                                        <motion.div className="replies-container" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                            {comment.replies.map((reply, i) => (
-                                                <div key={i} className="reply-card">
-                                                    <div className="comment-author" style={{ marginBottom: 8 }}>
-                                                        <div className="comment-avatar" style={{ width: 28, height: 28, fontSize: 12, background: reply.isAdmin ? 'linear-gradient(135deg, #f89e35, #f56e00)' : 'linear-gradient(135deg, #10b981, #059669)' }}>
-                                                            {(reply.author || 'A')[0].toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                                <span className="comment-name" style={{ fontSize: 13 }}>{reply.author || 'Anonymous'}</span>
-                                                                {reply.isAdmin && <span className="admin-badge">Admin</span>}
-                                                            </div>
-                                                            <div className="comment-time">{formatDate(reply.createdAt)}</div>
-                                                        </div>
-                                                    </div>
-                                                    <p style={{ fontSize: 14, color: '#334155', lineHeight: 1.6, margin: 0 }}>{reply.content}</p>
+                        {(() => {
+                            const renderTree = (parentId = null, depth = 0) => {
+                                return comments
+                                    .filter(c => c.parentId === parentId)
+                                    .sort((a, b) => {
+                                        // Top level: newest first. Replies: oldest first.
+                                        if (parentId === null) return new Date(b.createdAt) - new Date(a.createdAt);
+                                        return new Date(a.createdAt) - new Date(b.createdAt);
+                                    })
+                                    .map((comment) => (
+                                        <motion.div
+                                            key={comment._id}
+                                            className="comment-card"
+                                            style={{ 
+                                                marginLeft: depth > 0 ? (depth > 3 ? 0 : 20) : 0, 
+                                                borderLeft: depth > 0 ? '2px solid #fff7ed' : '1px solid #f1f5f9',
+                                                background: depth % 2 === 1 ? '#fdfcfb' : 'white'
+                                            }}
+                                            initial={{ opacity: 0, y: 12 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0 }}
+                                        >
+                                            <div className="comment-author">
+                                                <div className="comment-avatar" style={{ background: comment.isAdmin ? 'linear-gradient(135deg, #f89e35, #f56e00)' : 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
+                                                    {(comment.author || 'A')[0].toUpperCase()}
                                                 </div>
-                                            ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                {/* Reply form */}
-                                <AnimatePresence>
-                                    {replyingTo === comment._id && (
-                                        <motion.div className="reply-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                            <input
-                                                className="comment-input"
-                                                style={{ marginBottom: 8 }}
-                                                placeholder="Your name (optional)"
-                                                value={replyAuthor}
-                                                onChange={e => setReplyAuthor(e.target.value)}
-                                            />
-                                            <textarea
-                                                className="comment-input comment-textarea"
-                                                style={{ minHeight: 70 }}
-                                                placeholder="Write a reply..."
-                                                value={replyText}
-                                                onChange={e => setReplyText(e.target.value)}
-                                            />
-                                            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                                                <button className="submit-btn" onClick={() => submitReply(comment._id)} disabled={submitting || !replyText.trim()} style={{ fontSize: 13, padding: '9px 18px' }}>
-                                                    <Send size={12} />Reply
-                                                </button>
-                                                <button onClick={() => setReplyingTo(null)} style={{ padding: '9px 16px', borderRadius: 100, border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                                                    Cancel
-                                                </button>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                        <span className="comment-name">{comment.author || 'Anonymous'}</span>
+                                                        {comment.isAdmin && <span className="admin-badge">Admin</span>}
+                                                    </div>
+                                                    <div className="comment-time">{formatDate(comment.createdAt)}</div>
+                                                </div>
                                             </div>
+                                            <p className="comment-text">{comment.content}</p>
+                                            <div className="comment-actions">
+                                                <button className="comment-action-btn" onClick={() => likeComment(comment._id)}>
+                                                    <Heart size={14} /> {comment.likes > 0 && comment.likes}
+                                                </button>
+                                                <button className="comment-action-btn" onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}>
+                                                    <MessageCircle size={14} /> Reply
+                                                </button>
+                                                {comments.some(c => c.parentId === comment._id) && (
+                                                    <button className="comment-action-btn" onClick={() => setExpandedReplies(p => ({ ...p, [comment._id]: !p[comment._id] }))}>
+                                                        <ChevronDown size={14} style={{ transition: '0.2s', transform: expandedReplies[comment._id] ? 'rotate(180deg)' : '' }} />
+                                                        {expandedReplies[comment._id] ? 'Hide' : 'View'} Replies
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Reply form */}
+                                            <AnimatePresence>
+                                                {replyingTo === comment._id && (
+                                                    <motion.div className="reply-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                                                        <input
+                                                            className="comment-input"
+                                                            style={{ marginBottom: 8 }}
+                                                            placeholder="Your name (optional)"
+                                                            value={replyAuthor}
+                                                            onChange={e => setReplyAuthor(e.target.value)}
+                                                        />
+                                                        <textarea
+                                                            className="comment-input comment-textarea"
+                                                            style={{ minHeight: 70 }}
+                                                            placeholder="Write a reply..."
+                                                            value={replyText}
+                                                            onChange={e => setReplyText(e.target.value)}
+                                                        />
+                                                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                                            <button className="submit-btn" onClick={() => submitReply(comment._id)} disabled={submitting || !replyText.trim()} style={{ fontSize: 13, padding: '9px 18px' }}>
+                                                                <Send size={12} />Reply
+                                                            </button>
+                                                            <button onClick={() => setReplyingTo(null)} style={{ padding: '9px 16px', borderRadius: 100, border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+
+                                            {/* Recursive children */}
+                                            <AnimatePresence>
+                                                {expandedReplies[comment._id] && (
+                                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                                                        {renderTree(comment._id, depth + 1)}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </motion.div>
-                        ))}
+                                    ));
+                            };
+                            return renderTree();
+                        })()}
                     </AnimatePresence>
 
                     {comments.length === 0 && (

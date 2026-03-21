@@ -9,9 +9,13 @@ import Image from 'next/image';
 // Helper: extract YouTube video id
 const getYouTubeId = (id) => id; // our backend already stores just the ID
 
+const COURSE_CATEGORIES = ['All', 'General', 'Programming', 'Design', 'Business', 'Marketing', 'Data Science', 'DevOps', 'Other'];
+
 export default function CoursePage() {
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeCategory, setActiveCategory] = useState('All');
+    const [search, setSearch] = useState('');
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [introState, setIntroState] = useState('idle'); // idle | speaking | done
     const [introProgress, setIntroProgress] = useState(0);
@@ -22,7 +26,7 @@ export default function CoursePage() {
     useEffect(() => {
         fetchCourses();
         checkResumeState();
-    }, []);
+    }, [activeCategory]);
 
     // Cleanup speech on unmount
     useEffect(() => {
@@ -33,8 +37,10 @@ export default function CoursePage() {
     }, []);
 
     const fetchCourses = async () => {
+        setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/courses`);
+            const params = activeCategory !== 'All' ? `?category=${encodeURIComponent(activeCategory)}` : '';
+            const res = await fetch(`${API_BASE_URL}/courses${params}`);
             if (res.ok) setCourses(await res.json());
         } catch (e) {
             console.error(e);
@@ -43,7 +49,13 @@ export default function CoursePage() {
         }
     };
 
+    const filtered = courses.filter(c =>
+        c.title?.toLowerCase().includes(search.toLowerCase()) ||
+        c.description?.toLowerCase().includes(search.toLowerCase())
+    );
+
     const checkResumeState = () => {
+// ... rest of the logic ...
         try {
             const saved = localStorage.getItem('lastWatchedCourse');
             if (saved) setResumePrompt(JSON.parse(saved));
@@ -127,7 +139,7 @@ export default function CoursePage() {
                     padding: 80px 0 60px;
                 }
                 .course-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-                .course-header { text-align: center; margin-bottom: 60px; padding-top: 20px; }
+                .course-header { text-align: center; margin-bottom: 48px; padding-top: 20px; }
                 .course-badge {
                     display: inline-flex; align-items: center; gap: 6px;
                     background: linear-gradient(135deg, #f89e35, #f56e00);
@@ -136,7 +148,36 @@ export default function CoursePage() {
                     padding: 6px 14px; border-radius: 100px; margin-bottom: 16px;
                 }
                 .course-title { font-size: 48px; font-weight: 900; color: #0f172a; letter-spacing: -1.5px; margin: 0 0 12px; }
-                .course-subtitle { color: #64748b; font-size: 17px; font-weight: 500; }
+                .course-subtitle { color: #64748b; font-size: 17px; font-weight: 500; margin-bottom: 32px; }
+
+                /* Search */
+                .course-search {
+                    max-width: 440px; margin: 0 auto 32px;
+                    display: flex; align-items: center;
+                    background: white; border-radius: 100px; border: 1.5px solid #e2e8f0;
+                    padding: 8px 16px; gap: 10px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+                    transition: border-color 0.2s, box-shadow 0.2s;
+                }
+                .course-search:focus-within { border-color: #f89e35; box-shadow: 0 4px 20px rgba(248,158,53,0.12); }
+                .course-search input { flex: 1; border: none; outline: none; font-size: 15px; font-weight: 500; color: #0f172a; background: transparent; }
+                .course-search input::placeholder { color: #94a3b8; }
+
+                /* Category Strip */
+                .category-strip {
+                    display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px;
+                    margin-bottom: 40px; scrollbar-width: none; justify-content: center;
+                }
+                @media (max-width: 768px) { .category-strip { justify-content: flex-start; } }
+                .category-strip::-webkit-scrollbar { display: none; }
+                .cat-btn {
+                    padding: 8px 18px; border-radius: 100px; border: 1.5px solid #e2e8f0;
+                    font-size: 13px; font-weight: 700; cursor: pointer;
+                    white-space: nowrap; transition: all 0.15s;
+                    background: white; color: #64748b;
+                }
+                .cat-btn.active { background: linear-gradient(135deg, #f89e35, #f56e00); color: white; border-color: transparent; box-shadow: 0 4px 16px rgba(248,158,53,0.3); }
+                .cat-btn:hover:not(.active) { border-color: #f89e35; color: #f89e35; }
                 .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 28px; }
                 .course-card {
                     background: white; border-radius: 24px; overflow: hidden;
@@ -378,6 +419,30 @@ export default function CoursePage() {
                     <div className="course-badge"><BookOpen size={11} /> Learning Hub</div>
                     <h1 className="course-title">Lala Tech Courses</h1>
                     <p className="course-subtitle">Handpicked learning resources — watch directly, progress is saved</p>
+
+                    {/* Search */}
+                    <div className="course-search">
+                        <Search size={18} color="#94a3b8" />
+                        <input
+                            type="text"
+                            placeholder="Search courses..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {/* Category filters */}
+                <div className="category-strip">
+                    {COURSE_CATEGORIES.map(cat => (
+                        <button
+                            key={cat}
+                            className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}
+                            onClick={() => setActiveCategory(cat)}
+                        >
+                            {cat}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Grid */}
@@ -394,15 +459,19 @@ export default function CoursePage() {
                             </div>
                         ))}
                     </div>
-                ) : courses.length === 0 ? (
+                ) : filtered.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '80px 20px', background: 'white', borderRadius: 24, border: '2px dashed #e2e8f0' }}>
                         <PlayCircle size={48} color="#cbd5e1" style={{ margin: '0 auto 16px' }} />
-                        <h3 style={{ fontWeight: 800, color: '#0f172a' }}>No Courses Yet</h3>
-                        <p style={{ color: '#94a3b8', marginTop: 6 }}>Check back soon!</p>
+                        <h3 style={{ fontWeight: 800, color: '#0f172a' }}>
+                            {search ? 'No courses match your search' : 'No Courses Yet'}
+                        </h3>
+                        <p style={{ color: '#94a3b8', marginTop: 6 }}>
+                            {search ? 'Try a different keyword' : 'Check back soon!'}
+                        </p>
                     </div>
                 ) : (
                     <div className="course-grid">
-                        {courses.map((course, idx) => (
+                        {filtered.map((course, idx) => (
                             <motion.div
                                 key={course._id}
                                 className="course-card"

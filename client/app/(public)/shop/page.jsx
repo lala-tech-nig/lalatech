@@ -5,9 +5,12 @@ import { ShoppingBag, Share2, MessageCircle, X, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
 
+const SHOP_CATEGORIES = ['All', 'General', 'Electronics', 'Accessories', 'Software', 'Clothing', 'Books', 'Other'];
+
 export default function ShopPage() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeCategory, setActiveCategory] = useState('All');
     const [search, setSearch] = useState('');
     const [shareProduct, setShareProduct] = useState(null);
     const [shareCopied, setShareCopied] = useState(false);
@@ -16,7 +19,7 @@ export default function ShopPage() {
     useEffect(() => {
         fetchProducts();
         fetchConfig();
-    }, []);
+    }, [activeCategory]);
 
     const fetchConfig = async () => {
         try {
@@ -30,8 +33,10 @@ export default function ShopPage() {
 
 
     const fetchProducts = async () => {
+        setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/products`);
+            const params = activeCategory !== 'All' ? `?category=${encodeURIComponent(activeCategory)}` : '';
+            const res = await fetch(`${API_BASE_URL}/products${params}`);
             if (res.ok) {
                 const data = await res.json();
                 setProducts(data);
@@ -42,7 +47,8 @@ export default function ShopPage() {
             setLoading(false);
         }
     };
-
+    
+    // ... rest of the logic ...
     const filtered = products.filter(p =>
         p.title?.toLowerCase().includes(search.toLowerCase()) ||
         p.description?.toLowerCase().includes(search.toLowerCase())
@@ -104,7 +110,7 @@ export default function ShopPage() {
 
                 /* Search */
                 .shop-search {
-                    max-width: 440px; margin: 0 auto 48px;
+                    max-width: 440px; margin: 0 auto 32px;
                     display: flex; align-items: center;
                     background: white; border-radius: 100px; border: 1.5px solid #e2e8f0;
                     padding: 8px 16px; gap: 10px;
@@ -114,6 +120,22 @@ export default function ShopPage() {
                 .shop-search:focus-within { border-color: #f89e35; box-shadow: 0 4px 20px rgba(248,158,53,0.12); }
                 .shop-search input { flex: 1; border: none; outline: none; font-size: 15px; font-weight: 500; color: #0f172a; background: transparent; }
                 .shop-search input::placeholder { color: #94a3b8; }
+
+                /* Category Strip */
+                .category-strip {
+                    display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px;
+                    margin-bottom: 40px; scrollbar-width: none; justify-content: center;
+                }
+                @media (max-width: 768px) { .category-strip { justify-content: flex-start; } }
+                .category-strip::-webkit-scrollbar { display: none; }
+                .cat-btn {
+                    padding: 8px 18px; border-radius: 100px; border: 1.5px solid #e2e8f0;
+                    font-size: 13px; font-weight: 700; cursor: pointer;
+                    white-space: nowrap; transition: all 0.15s;
+                    background: white; color: #64748b;
+                }
+                .cat-btn.active { background: linear-gradient(135deg, #f89e35, #f56e00); color: white; border-color: transparent; box-shadow: 0 4px 16px rgba(248,158,53,0.3); }
+                .cat-btn:hover:not(.active) { border-color: #f89e35; color: #f89e35; }
 
                 /* Grid */
                 .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 28px; }
@@ -224,6 +246,19 @@ export default function ShopPage() {
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
+                </div>
+
+                {/* Category filters */}
+                <div className="category-strip">
+                    {SHOP_CATEGORIES.map(cat => (
+                        <button
+                            key={cat}
+                            className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}
+                            onClick={() => setActiveCategory(cat)}
+                        >
+                            {cat}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Products */}

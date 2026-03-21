@@ -96,23 +96,23 @@ export default function FeedPage() {
         if (!content) return;
         setSubmitting(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
+            const res = await fetch(`${API_BASE_URL}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    postId,
+                    postType: 'post',
+                    parentId: commentId,
                     author: replyAuthors[commentId]?.trim() || 'Visitor',
                     content,
                 }),
             });
             if (res.ok) {
-                const updated = await res.json();
-                setComments(prev => ({
-                    ...prev,
-                    [postId]: (prev[postId] || []).map(c => c._id === commentId ? updated : c)
-                }));
-                setReplyingTo(prev => ({ ...prev, [commentId]: false }));
+                const newReply = await res.json();
+                setComments(prev => ({ ...prev, [postId]: [newReply, ...(prev[postId] || [])] }));
                 setReplyInputs(prev => ({ ...prev, [commentId]: '' }));
                 setReplyAuthors(prev => ({ ...prev, [commentId]: '' }));
+                setReplyingTo(prev => ({ ...prev, [commentId]: false }));
                 setExpandedReplies(prev => ({ ...prev, [commentId]: true }));
             }
         } catch (e) {}
@@ -317,84 +317,89 @@ export default function FeedPage() {
                                                     {postComments.length === 0 ? (
                                                         <div className="no-comments">No comments yet. Be the first! 👇</div>
                                                     ) : (
-                                                        postComments.map(comment => (
-                                                            <div key={comment._id} className="comment-item">
-                                                                <div className="c-avatar" style={{ background: comment.isAdmin ? 'linear-gradient(135deg, #f89e35, #f56e00)' : 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
-                                                                    {(comment.author || 'A')[0].toUpperCase()}
-                                                                </div>
-                                                                <div className="c-bubble">
-                                                                    <div className="c-header">
-                                                                        <span className="c-name">{comment.author || 'Anonymous'}</span>
-                                                                        {comment.isAdmin && <span className="admin-badge">Admin</span>}
-                                                                        <span className="c-time">{formatDate(comment.createdAt)}</span>
-                                                                    </div>
-                                                                    <div className="c-text">{comment.content}</div>
-                                                                    <div className="c-actions">
-                                                                        <button className="c-action" onClick={() => likeComment(post._id, comment._id)}>
-                                                                            <Heart size={12} /> {comment.likes > 0 && comment.likes}
-                                                                        </button>
-                                                                        <button className="c-action" onClick={() => setReplyingTo(p => ({ ...p, [comment._id]: !p[comment._id] }))}>
-                                                                            <MessageCircle size={12} /> Reply
-                                                                        </button>
-                                                                        {comment.replies?.length > 0 && (
-                                                                            <button className="c-action" onClick={() => setExpandedReplies(p => ({ ...p, [comment._id]: !p[comment._id] }))}>
-                                                                                <ChevronDown size={12} style={{ transition: '0.2s', transform: expandedReplies[comment._id] ? 'rotate(180deg)' : '' }} />
-                                                                                {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Replies */}
-                                                                    <AnimatePresence>
-                                                                        {expandedReplies[comment._id] && comment.replies?.length > 0 && (
-                                                                            <motion.div className="replies-wrap" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                                                                {comment.replies.map((reply, ri) => (
-                                                                                    <div key={ri} className="comment-item" style={{ marginBottom: 10 }}>
-                                                                                        <div className="c-avatar" style={{ width: 26, height: 26, fontSize: 11, background: reply.isAdmin ? 'linear-gradient(135deg, #f89e35, #f56e00)' : 'linear-gradient(135deg, #10b981, #059669)' }}>
-                                                                                            {(reply.author || 'A')[0].toUpperCase()}
-                                                                                        </div>
-                                                                                        <div className="c-bubble">
-                                                                                            <div className="c-header">
-                                                                                                <span className="c-name" style={{ fontSize: 12 }}>{reply.author || 'Anonymous'}</span>
-                                                                                                {reply.isAdmin && <span className="admin-badge">Admin</span>}
-                                                                                                <span className="c-time">{formatDate(reply.createdAt)}</span>
-                                                                                            </div>
-                                                                                            <div className="c-text" style={{ fontSize: 13 }}>{reply.content}</div>
-                                                                                        </div>
+                                                        // Recursive Comment Tree
+                                                        (() => {
+                                                            const all = comments[post._id] || [];
+                                                            const renderTree = (parentId = null, depth = 0) => {
+                                                                return all.filter(c => c.parentId === parentId).sort((a,b) => {
+                                                                    if (parentId === null) return new Date(b.createdAt) - new Date(a.createdAt);
+                                                                    return new Date(a.createdAt) - new Date(b.createdAt);
+                                                                }).map(comment => (
+                                                                    <div key={comment._id} className="mb-4">
+                                                                        <div className={`p-4 rounded-2xl ${depth > 0 ? 'ml-6 bg-orange-50/20 border-l-2 border-[#f89e35]/30' : 'bg-white border border-slate-100 shadow-sm'}`}>
+                                                                            <div className="flex justify-between items-start mb-2">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${comment.isAdmin ? 'bg-gradient-to-br from-[#f89e35] to-[#f56e00]' : 'bg-slate-400'}`}>
+                                                                                        {comment.author ? comment.author[0].toUpperCase() : 'A'}
                                                                                     </div>
-                                                                                ))}
-                                                                            </motion.div>
-                                                                        )}
-                                                                    </AnimatePresence>
-
-                                                                    {/* Reply input */}
-                                                                    <AnimatePresence>
-                                                                        {replyingTo[comment._id] && (
-                                                                            <motion.div className="reply-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                                                                <input
-                                                                                    className="c-name-input"
-                                                                                    placeholder="Your name (optional)"
-                                                                                    value={replyAuthors[comment._id] || ''}
-                                                                                    onChange={e => setReplyAuthors(p => ({ ...p, [comment._id]: e.target.value }))}
-                                                                                />
-                                                                                <div className="c-input-row">
-                                                                                    <textarea
-                                                                                        className="c-textarea"
-                                                                                        placeholder="Write a reply..."
-                                                                                        value={replyInputs[comment._id] || ''}
-                                                                                        onChange={e => setReplyInputs(p => ({ ...p, [comment._id]: e.target.value }))}
-                                                                                        rows={2}
-                                                                                    />
-                                                                                    <button className="c-send-btn" disabled={submitting || !replyInputs[comment._id]?.trim()} onClick={() => submitReply(post._id, comment._id)}>
-                                                                                        <Send size={14} />
-                                                                                    </button>
+                                                                                    <div>
+                                                                                        <div className="flex items-center gap-1.5">
+                                                                                            <span className="font-bold text-sm text-slate-900">{comment.author || 'Anonymous'}</span>
+                                                                                            {comment.isAdmin && <span className="bg-[#f89e35] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-black">Admin</span>}
+                                                                                        </div>
+                                                                                        <span className="text-[10px] text-slate-400 italic">{formatDate(comment.createdAt)}</span>
+                                                                                    </div>
                                                                                 </div>
-                                                                            </motion.div>
-                                                                        )}
-                                                                    </AnimatePresence>
-                                                                </div>
-                                                            </div>
-                                                        ))
+                                                                                <button onClick={() => likeComment(post._id, comment._id)} className="flex items-center gap-1 text-slate-400 hover:text-red-500 transition">
+                                                                                    <Heart size={14} /> <span className="text-xs font-bold">{comment.likes || ''}</span>
+                                                                                </button>
+                                                                            </div>
+                                                                            <p className="text-sm text-slate-600 mb-3">{comment.content}</p>
+                                                                            <div className="flex gap-4">
+                                                                                <button
+                                                                                    onClick={() => setReplyingTo(prev => ({ ...prev, [comment._id]: !replyingTo[comment._id] }))}
+                                                                                    className="flex items-center gap-1.5 text-xs font-bold text-[#f89e35] hover:opacity-80 transition"
+                                                                                >
+                                                                                    <MessageCircle size={14} /> Reply
+                                                                                </button>
+                                                                                {all.some(c => c.parentId === comment._id) && (
+                                                                                    <button
+                                                                                        onClick={() => setExpandedReplies(prev => ({ ...prev, [comment._id]: !expandedReplies[comment._id] }))}
+                                                                                        className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-600 transition"
+                                                                                    >
+                                                                                        <ChevronDown size={14} className={expandedReplies[comment._id] ? "rotate-180 transition" : "transition"} />
+                                                                                        {expandedReplies[comment._id] ? 'Hide' : 'View'} Replies
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+
+                                                                            {/* Reply form */}
+                                                                            <AnimatePresence>
+                                                                                {replyingTo[comment._id] && (
+                                                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-4 overflow-hidden">
+                                                                                        <div className="space-y-3 bg-white p-4 rounded-xl border border-orange-100 shadow-sm">
+                                                                                            <input
+                                                                                                className="c-name-input"
+                                                                                                placeholder="Your name (optional)"
+                                                                                                value={replyAuthors[comment._id] || ''}
+                                                                                                onChange={e => setReplyAuthors({ ...replyAuthors, [comment._id]: e.target.value })}
+                                                                                            />
+                                                                                            <div className="c-input-row">
+                                                                                                <textarea
+                                                                                                    className="c-textarea"
+                                                                                                    placeholder={`Reply to ${comment.author || 'Anonymous'}...`}
+                                                                                                    value={replyInputs[comment._id] || ''}
+                                                                                                    onChange={e => setReplyInputs({ ...replyInputs, [comment._id]: e.target.value })}
+                                                                                                    rows={2}
+                                                                                                />
+                                                                                                <button className="c-send-btn" disabled={submitting || !replyInputs[comment._id]?.trim()} onClick={() => submitReply(post._id, comment._id)}>
+                                                                                                    <Send size={14} />
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </motion.div>
+                                                                                )}
+                                                                            </AnimatePresence>
+                                                                        </div>
+                                                                        {/* Nested tree */}
+                                                                        <AnimatePresence>
+                                                                            {expandedReplies[comment._id] && renderTree(comment._id, depth + 1)}
+                                                                        </AnimatePresence>
+                                                                    </div>
+                                                                ));
+                                                            };
+                                                            return renderTree();
+                                                        })()
                                                     )}
                                                 </div>
                                             </motion.div>

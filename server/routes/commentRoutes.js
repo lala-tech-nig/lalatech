@@ -10,12 +10,13 @@ router.get('/:postId', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// POST a new comment
+// POST a new comment or reply
 router.post('/', async (req, res) => {
     try {
         const comment = new Comment({
             postId: req.body.postId,
             postType: req.body.postType || 'post',
+            parentId: req.body.parentId || null,
             author: req.body.author || 'Anonymous',
             content: req.body.content,
             isAdmin: req.body.isAdmin || false,
@@ -23,21 +24,6 @@ router.post('/', async (req, res) => {
         const saved = await comment.save();
         res.status(201).json(saved);
     } catch (err) { res.status(400).json({ message: err.message }); }
-});
-
-// POST a reply to a comment
-router.post('/:commentId/reply', async (req, res) => {
-    try {
-        const comment = await Comment.findById(req.params.commentId);
-        if (!comment) return res.status(404).json({ message: 'Comment not found' });
-        comment.replies.push({
-            author: req.body.author || 'Anonymous',
-            content: req.body.content,
-            isAdmin: req.body.isAdmin || false,
-        });
-        await comment.save();
-        res.json(comment);
-    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // Like a comment
