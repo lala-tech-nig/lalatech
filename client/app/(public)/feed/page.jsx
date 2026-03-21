@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, TrendingUp, Send, ChevronDown, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, TrendingUp, Send, ChevronDown, X, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -19,6 +19,7 @@ export default function FeedPage() {
     const [replyAuthors, setReplyAuthors] = useState({});
     const [expandedReplies, setExpandedReplies] = useState({});
     const [submitting, setSubmitting] = useState(false);
+    const [search, setSearch] = useState('');
 
     useEffect(() => { fetchPosts(); }, []);
 
@@ -29,6 +30,10 @@ export default function FeedPage() {
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
+
+    const filteredPosts = posts.filter(p => 
+        (p.content || '').toLowerCase().includes(search.toLowerCase())
+    );
 
     const fetchComments = async (postId) => {
         try {
@@ -198,9 +203,17 @@ export default function FeedPage() {
                 .reply-form { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
                 .no-comments { text-align: center; padding: 24px 16px; color: #94a3b8; font-size: 14px; font-weight: 600; }
 
-                @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-                .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 400% 100%; animation: shimmer 1.5s infinite; border-radius: 12px; }
-                .skeleton-card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 16px rgba(0,0,0,0.06); }
+                /* SearchBar */
+                .feed-search {
+                    max-width: 100%; margin: 24px 0;
+                    display: flex; align-items: center;
+                    background: white; border-radius: 100px; border: 1.5px solid #e2e8f0;
+                    padding: 10px 18px; gap: 10px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+                    transition: border-color 0.2s;
+                }
+                .feed-search:focus-within { border-color: #f89e35; }
+                .feed-search input { flex: 1; border: none; outline: none; font-size: 15px; font-weight: 500; color: #0f172a; background: transparent; }
             `}</style>
 
             <div className="feed-container">
@@ -208,6 +221,16 @@ export default function FeedPage() {
                     <div className="feed-badge"><TrendingUp size={11} /> Live Feed</div>
                     <h1 className="feed-title">Lala's Feed</h1>
                     <p className="feed-subtitle">Updates, thoughts & moments from Lala Tech</p>
+                    
+                    <div className="feed-search">
+                        <Search size={18} color="#94a3b8" />
+                        <input
+                            type="text"
+                            placeholder="Search the feed..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                    </div>
                 </div>
                 <hr className="feed-divider" />
 
@@ -226,15 +249,19 @@ export default function FeedPage() {
                             <div className="skeleton" style={{ height: 200, marginTop: 12 }} />
                         </div>
                     ))
-                ) : posts.length === 0 ? (
+                ) : filteredPosts.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 24, border: '2px dashed #e2e8f0' }}>
                         <MessageCircle size={40} color="#94a3b8" style={{ margin: '0 auto 16px' }} />
-                        <h3 style={{ fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>No posts yet</h3>
-                        <p style={{ color: '#94a3b8', fontSize: 14 }}>Check back soon!</p>
+                        <h3 style={{ fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>
+                            {search ? 'No matches found' : 'No posts yet'}
+                        </h3>
+                        <p style={{ color: '#94a3b8', fontSize: 14 }}>
+                            {search ? 'Try a different keyword' : 'Check back soon!'}
+                        </p>
                     </div>
                 ) : (
                     <AnimatePresence>
-                        {posts.map((post, idx) => {
+                        {filteredPosts.map((post, idx) => {
                             const postComments = comments[post._id] || [];
                             const isCommenting = activeCommentPost === post._id;
                             return (

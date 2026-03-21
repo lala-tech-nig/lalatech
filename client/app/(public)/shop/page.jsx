@@ -163,21 +163,21 @@ export default function ShopPage() {
                 .product-desc { font-size: 13px; color: #64748b; line-height: 1.6; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 16px; }
                 .product-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
                 .btn-share {
-                    display: flex; align-items: center; justify-content: center; gap-6px;
-                    padding: 11px 8px; border-radius: 14px; border: 1.5px solid #e2e8f0;
-                    background: white; color: #64748b; font-size: 13px; font-weight: 700;
-                    cursor: pointer; transition: all 0.15s; gap: 6px;
+                    display: flex; align-items: center; justify-content: center; gap: 6px;
+                    padding: 11px 8px; border-radius: 14px; border: 1.5px solid #f89e35;
+                    background: white; color: #f89e35; font-size: 13px; font-weight: 700;
+                    cursor: pointer; transition: all 0.15s;
                 }
-                .btn-share:hover { border-color: #f89e35; color: #f89e35; background: #fff7ed; }
+                .btn-share:hover { background: #fff7ed; transform: translateY(-1px); }
                 .btn-buy {
                     display: flex; align-items: center; justify-content: center; gap: 6px;
                     padding: 11px 8px; border-radius: 14px; border: none;
-                    background: linear-gradient(135deg, #25D366, #128C7E);
+                    background: linear-gradient(135deg, #f89e35, #f56e00);
                     color: white; font-size: 13px; font-weight: 800;
                     cursor: pointer; transition: all 0.15s;
-                    box-shadow: 0 4px 16px rgba(37,211,102,0.3);
+                    box-shadow: 0 4px 16px rgba(248,158,53,0.3);
                 }
-                .btn-buy:hover { transform: scale(1.03); box-shadow: 0 6px 24px rgba(37,211,102,0.4); }
+                .btn-buy:hover { transform: scale(1.03); box-shadow: 0 6px 24px rgba(248,158,53,0.4); }
 
                 /* Share modal */
                 .share-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }

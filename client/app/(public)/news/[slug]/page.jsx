@@ -168,8 +168,11 @@ export default function NewsArticlePage() {
                 .article-h1 { font-size: 36px; font-weight: 900; color: #0f172a; line-height: 1.2; letter-spacing: -1px; margin-bottom: 24px; }
                 @media (max-width: 600px) { .article-h1 { font-size: 26px; } }
                 .article-cover { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 20px; margin-bottom: 40px; box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
-                .article-body { font-size: 17px; line-height: 1.85; color: #334155; white-space: pre-wrap; margin-bottom: 48px; }
+                .article-body { font-size: 17px; line-height: 1.85; color: #334155; margin-bottom: 48px; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word; }
                 .article-body p { margin-bottom: 20px; }
+                .article-body img { max-width: 100%; height: auto; border-radius: 12px; margin: 20px 0; display: block; }
+                .article-body blockquote { border-left: 4px solid #f89e35; padding-left: 20px; font-style: italic; color: #64748b; margin: 24px 0; }
+                .article-body ul, .article-body ol { margin-bottom: 20px; padding-left: 24px; }
                 .action-bar {
                     display: flex; align-items: center; gap: 16px;
                     padding: 20px 24px; background: #f8fafc; border-radius: 20px;
@@ -232,7 +235,7 @@ export default function NewsArticlePage() {
                 {article.coverImage && <img src={article.coverImage} alt={article.title} className="article-cover" />}
 
                 {/* Article body */}
-                <div className="article-body">{article.content}</div>
+                <div className="article-body" dangerouslySetInnerHTML={{ __html: article.content }} />
 
                 {/* Action bar */}
                 <div className="action-bar">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { PlayCircle, Clock, X, Volume2, SkipForward, BookOpen } from 'lucide-react';
+import { PlayCircle, Clock, X, Volume2, SkipForward, BookOpen, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
 import Image from 'next/image';

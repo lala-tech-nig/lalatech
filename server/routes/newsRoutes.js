@@ -47,26 +47,11 @@ router.get('/admin/all', async (req, res) => {
 // POST create news
 router.post('/', async (req, res) => {
     try {
-        // Auto-generate slug
-        const baseSlug = (req.body.title || '')
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .substring(0, 80);
-        
-        // Ensure unique slug
-        let slug = baseSlug;
-        let count = 0;
-        while (await News.findOne({ slug })) {
-            count++;
-            slug = `${baseSlug}-${count}`;
-        }
-
         const article = new News({
             title: req.body.title,
-            slug,
+            // Slug is handled by the model pre-validate hook
             content: req.body.content,
-            excerpt: req.body.excerpt || req.body.content.substring(0, 160),
+            excerpt: req.body.excerpt || (req.body.content ? req.body.content.replace(/<[^>]*>/g, '').substring(0, 160) : ''),
             category: req.body.category || 'General',
             tags: req.body.tags || [],
             coverImage: req.body.coverImage || '',
@@ -98,6 +83,17 @@ router.post('/:id/like', async (req, res) => {
 router.post('/:id/share', async (req, res) => {
     try {
         const article = await News.findByIdAndUpdate(req.params.id, { $inc: { shares: 1 } }, { new: true });
+        res.json(article);
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// SET AS NEWS OF THE DAY
+router.post('/admin/set-news-of-day/:id', async (req, res) => {
+    try {
+        // First unset all
+        await News.updateMany({}, { isNewsOfDay: false });
+        // Set new one
+        const article = await News.findByIdAndUpdate(req.params.id, { isNewsOfDay: true }, { new: true });
         res.json(article);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });

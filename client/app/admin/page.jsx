@@ -1,10 +1,82 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import API_BASE_URL, { BASE_URL } from '@/lib/api';
+import { 
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    BarChart, Bar, Cell
+} from 'recharts';
+
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+import 'react-quill-new/dist/quill.snow.css';
+
+// --- Data Aggregation Helpers ---
+const getDailyVisits = (data) => {
+    const daily = {};
+    const last14Days = [];
+    for (let i = 13; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        daily[dateStr] = 0;
+        last14Days.push(dateStr);
+    }
+
+    data.forEach(item => {
+        const dateStr = new Date(item.createdAt).toISOString().split('T')[0];
+        if (daily[dateStr] !== undefined) {
+            daily[dateStr]++;
+        }
+    });
+
+    return last14Days.map(date => ({
+        date: new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        visits: daily[date]
+    }));
+};
+
+const getTopPages = (data) => {
+    const pages = {};
+    data.forEach(item => {
+        pages[item.page] = (pages[item.page] || 0) + 1;
+    });
+    return Object.entries(pages)
+        .map(([name, visits]) => ({ name: name.split('/').pop() || 'Home', visits }))
+        .sort((a, b) => b.visits - a.visits)
+        .slice(0, 6);
+};
+
+const getIPStats = (data) => {
+    const ips = {};
+    data.forEach(item => {
+        if (!ips[item.ip]) {
+            ips[item.ip] = {
+                ip: item.ip,
+                visits: 0,
+                pages: new Set(),
+                totalTime: 0,
+                lastSeen: item.updatedAt
+            };
+        }
+        ips[item.ip].visits++;
+        ips[item.ip].pages.add(item.page);
+        ips[item.ip].totalTime += item.timeSpent || 0;
+        if (new Date(item.updatedAt) > new Date(ips[item.ip].lastSeen)) {
+            ips[item.ip].lastSeen = item.updatedAt;
+        }
+    });
+
+    return Object.values(ips).map(stat => ({
+        ...stat,
+        uniquePages: stat.pages.size,
+        avgTime: Math.round(stat.totalTime / stat.visits),
+        pages: Array.from(stat.pages)
+    })).sort((a, b) => b.visits - a.visits);
+};
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
@@ -217,6 +289,18 @@ export default function AdminDashboard() {
             }
         } catch (e) {}
         setActiveFeedComments(postId);
+    };
+
+    const setNewsOfDay = async (id) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/news/admin/set-news-of-day/${id}`, { method: 'POST' });
+            if (res.ok) {
+                toast.success('News of the Day updated');
+                // Refresh news list to reflect changes
+                const newsRes = await fetch(`${API_BASE_URL}/news/admin/all`);
+                if (newsRes.ok) setNewsArticles(await newsRes.json());
+            }
+        } catch (e) { toast.error('Failed to set News of the Day'); }
     };
     const sendAdminReply = async (commentId, postId, postType = 'post') => {
         const text = adminReplies[commentId]?.trim();
@@ -456,35 +540,145 @@ export default function AdminDashboard() {
                     )}
 
                     {activeTab === 'analytics' && (
-                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
                             <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Full Analytics</h1>
-                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Monitor user activity, clicks, active IPs, pages, and time spent on your platform.</p>
+                            <p className="text-slate-500 font-medium mb-8">Detailed monitoring of user activity, path popularity, and visitor retention.</p>
 
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm overflow-x-auto">
-                                <table className="w-full text-left border-collapse min-w-[700px]">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                                            <th className="p-4">IP Address</th>
-                                            <th className="p-4">Page</th>
-                                            <th className="p-4">Time Spent</th>
-                                            <th className="p-4">Clicks Recorded</th>
-                                            <th className="p-4">Last Updated</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {analyticsData.map((d) => (
-                                            <tr key={d._id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                                <td className="p-4 font-bold text-slate-900">{d.ip}</td>
-                                                <td className="p-4 font-medium text-slate-600">{d.page}</td>
-                                                <td className="p-4 font-medium text-slate-600">{d.timeSpent} sec</td>
-                                                <td className="p-4 font-medium text-slate-600 cursor-help" title={JSON.stringify(d.clicks)}>{d.clicks ? d.clicks.length : 0} clicks</td>
-                                                <td className="p-4 font-medium text-slate-500 text-sm whitespace-nowrap">{new Date(d.updatedAt).toLocaleString()}</td>
+                            {/* Stats Summary */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Hits</h4>
+                                    <p className="text-2xl font-black text-slate-900">{analyticsData.length}</p>
+                                </div>
+                                <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Unique IPs</h4>
+                                    <p className="text-2xl font-black text-slate-900">{getIPStats(analyticsData).length}</p>
+                                </div>
+                                <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm transition hover:shadow-md">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Avg. Time</h4>
+                                    <p className="text-2xl font-black text-slate-900">
+                                        {analyticsData.length > 0 
+                                            ? Math.round(analyticsData.reduce((acc, curr) => acc + (curr.timeSpent || 0), 0) / analyticsData.length) 
+                                            : 0}s
+                                    </p>
+                                </div>
+                                <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm transition hover:shadow-md border-l-4 border-l-[#f89e35]">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-[#f89e35] mb-1">Top Page</h4>
+                                    <p className="text-lg font-black text-slate-900 truncate">
+                                        {getTopPages(analyticsData)[0]?.name || 'N/A'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Charts Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+                                <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm h-[380px] transition hover:shadow-lg">
+                                    <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                        <Activity className="w-5 h-5 text-[#f89e35]" /> Daily Visits (Active Trend)
+                                    </h3>
+                                    <div className="h-[280px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={getDailyVisits(analyticsData)}>
+                                                <defs>
+                                                    <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#f89e35" stopOpacity={0.15}/>
+                                                        <stop offset="95%" stopColor="#f89e35" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} dy={10} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
+                                                <Tooltip 
+                                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                                                    cursor={{ stroke: '#f89e35', strokeWidth: 1 }}
+                                                />
+                                                <Area type="monotone" dataKey="visits" stroke="#f89e35" strokeWidth={4} fillOpacity={1} fill="url(#colorVisits)" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm h-[380px] transition hover:shadow-lg">
+                                    <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                        <FileText className="w-5 h-5 text-[#f89e35]" /> Content Performance
+                                    </h3>
+                                    <div className="h-[280px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart layout="vertical" data={getTopPages(analyticsData)}>
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#334155'}} width={100} />
+                                                <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} />
+                                                <Bar dataKey="visits" fill="#f89e35" radius={[0, 12, 12, 0]} barSize={24}>
+                                                    {getTopPages(analyticsData).map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={index === 0 ? '#f89e35' : '#cbd5e1'} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* IP Activity Table */}
+                            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden transition hover:shadow-lg">
+                                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+                                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                        <Users className="w-5 h-5 text-[#f89e35]" /> Visitor Analysis by IP
+                                    </h3>
+                                    <span className="bg-white px-3 py-1 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-200 shadow-sm">{getIPStats(analyticsData).length} Unique Visitors Found</span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/50 text-slate-400 font-bold uppercase text-[10px] tracking-widest border-b border-slate-100">
+                                                <th className="p-6">IP Details (Hover for Pages)</th>
+                                                <th className="p-6 text-center">Visit Count</th>
+                                                <th className="p-6">Uniq. Pages</th>
+                                                <th className="p-6">Avg Retention</th>
+                                                <th className="p-6">Last Activity</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {getIPStats(analyticsData).map((stat) => (
+                                                <tr key={stat.ip} className="border-b border-slate-50 hover:bg-[#fff7ed]/50 transition-colors group">
+                                                    <td className="p-6">
+                                                        <span className="font-black text-slate-900 text-base block mb-0.5 group-hover:text-[#f89e35] transition-colors">{stat.ip}</span>
+                                                        <div className="flex flex-wrap gap-1 mt-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                                                            {stat.pages.map(p => (
+                                                                <span key={p} className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{p.split('/').pop() || 'Home'}</span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-6 text-center">
+                                                        <span className="bg-[#110f0e] text-white px-3 py-1 rounded-xl text-xs font-black shadow-lg shadow-black/10 inline-block min-w-[32px]">{stat.visits}</span>
+                                                    </td>
+                                                    <td className="p-6 font-bold text-slate-600 text-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                                                            {stat.uniquePages} pages explored
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-6 font-bold text-slate-600 text-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                                                            {stat.avgTime}s avg. time
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-6 text-sm font-bold text-slate-400">
+                                                        <span className="text-slate-900 block">{new Date(stat.lastSeen).toLocaleDateString()}</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-tighter opacity-70">{new Date(stat.lastSeen).toLocaleTimeString()}</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                                 {analyticsData.length === 0 && !loading && (
-                                    <div className="text-center py-10 text-slate-500 font-medium">No analytics data collected yet.</div>
+                                    <div className="text-center py-20">
+                                        <Activity className="w-12 h-12 text-slate-200 mx-auto mb-4 animate-pulse" />
+                                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Awaiting visitor traffic...</p>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -930,7 +1124,7 @@ export default function AdminDashboard() {
                                         <div className="absolute top-4 left-4 z-10 flex gap-2">
                                             <span className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-[#f89e35] shadow-sm uppercase">{p.category || 'General'}</span>
                                         </div>
-                                        <img src={p.image} className="w-full h-48 object-cover bg-slate-100" />
+                                        <img src={p.image || null} className="w-full h-48 object-cover bg-slate-100" />
                                         <div className="p-5">
                                             <h4 className="font-bold text-slate-900 mb-1 truncate">{p.title}</h4>
                                             <p className="text-[#f89e35] font-black text-lg">₦{p.price}</p>
@@ -1021,7 +1215,7 @@ export default function AdminDashboard() {
                                         <div className="absolute top-4 left-4 z-10 flex gap-2">
                                             <span className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-[#f89e35] shadow-sm uppercase">{c.category || 'General'}</span>
                                         </div>
-                                        <img src={c.thumbnailUrl} className="w-full h-40 object-cover bg-slate-100" />
+                                        <img src={c.thumbnailUrl || null} className="w-full h-40 object-cover bg-slate-100" />
                                         <div className="p-4">
                                             <h4 className="font-bold truncate text-slate-900">{c.title}</h4>
                                         </div>
@@ -1163,7 +1357,24 @@ export default function AdminDashboard() {
                                     
                                     <input type="text" placeholder="Excerpt (Short summary)" required value={newArticle.excerpt} onChange={e => setNewArticle({ ...newArticle, excerpt: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
                                     
-                                    <textarea placeholder="Article Content..." required value={newArticle.content} onChange={e => setNewArticle({ ...newArticle, content: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl min-h-[300px] font-sans focus:outline-none focus:border-[#f89e35]" />
+                                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                        <ReactQuill 
+                                            theme="snow"
+                                            value={newArticle.content}
+                                            onChange={(val) => setNewArticle({ ...newArticle, content: val })}
+                                            placeholder="Article Content..."
+                                            modules={{
+                                                toolbar: [
+                                                    [{ 'header': [1, 2, 3, false] }],
+                                                    ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                                                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                                    [{ 'color': [] }, { 'background': [] }],
+                                                    ['link', 'clean']
+                                                ]
+                                            }}
+                                            className="h-[350px] mb-12"
+                                        />
+                                    </div>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <input type="text" placeholder="Tags (comma separated: tech, coding)" value={newArticle.tags} onChange={e => setNewArticle({ ...newArticle, tags: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
@@ -1208,6 +1419,13 @@ export default function AdminDashboard() {
                                                 <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> {article.views}</span>
                                                 <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {article.likes}</span>
                                                 <span className="flex items-center gap-1"><Share2 className="w-3.5 h-3.5" /> {article.shares}</span>
+                                                <button 
+                                                    onClick={() => setNewsOfDay(article._id)}
+                                                    className={`ml-4 flex items-center gap-1 px-3 py-1 rounded-full transition ${article.isNewsOfDay ? 'bg-[#f89e35] text-white' : 'bg-slate-100 text-slate-500 hover:bg-orange-100/50'}`}
+                                                >
+                                                    <TrendingUp className="w-3.5 h-3.5" />
+                                                    {article.isNewsOfDay ? 'News of the Day' : 'Set as News of the Day'}
+                                                </button>
                                             </div>
                                         </div>
                                         <button onClick={() => deleteArticle(article._id)} className="absolute top-6 right-6 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-5 h-5" /></button>

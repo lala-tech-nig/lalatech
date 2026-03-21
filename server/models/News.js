@@ -13,18 +13,33 @@ const newsSchema = new mongoose.Schema({
     shares: { type: Number, default: 0 },
     views: { type: Number, default: 0 },
     published: { type: Boolean, default: true },
+    isNewsOfDay: { type: Boolean, default: false },
 }, { timestamps: true });
 
-// Auto-generate slug from title if not provided
-newsSchema.pre('validate', function (next) {
+newsSchema.pre('validate', async function () {
     if (this.title && !this.slug) {
         this.slug = this.title
             .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .substring(0, 80);
+            .trim()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/[\s_-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
     }
-    next();
+
+    // Ensure uniqueness if slug was just generated or changed
+    if (this.isModified('slug')) {
+        const baseSlug = this.slug;
+        let slug = baseSlug;
+        let count = 0;
+        
+        while (true) {
+            const existing = await mongoose.model('News').findOne({ slug, _id: { $ne: this._id } });
+            if (!existing) break;
+            count++;
+            slug = `${baseSlug}-${count}`;
+        }
+        this.slug = slug;
+    }
 });
 
 module.exports = mongoose.model('News', newsSchema);

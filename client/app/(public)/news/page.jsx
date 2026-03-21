@@ -39,6 +39,9 @@ export default function NewsPage() {
     const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const readTime = (content) => `${Math.max(1, Math.ceil((content || '').split(' ').length / 200))} min read`;
 
+    const newsOfDay = articles.find(a => a.isNewsOfDay) || filtered[0];
+    const otherArticles = filtered.filter(a => a._id !== newsOfDay?._id);
+
     return (
         <div className="news-page">
             <style>{`
@@ -180,25 +183,25 @@ export default function NewsPage() {
                     </div>
                 ) : (
                     <>
-                        {/* Featured - first article */}
-                        {filtered.length > 0 && !search && (
+                        {/* Featured - News of the Day */}
+                        {newsOfDay && !search && (
                             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                                <Link href={`/news/${filtered[0].slug}`} className="featured-card">
+                                <Link href={`/news/${newsOfDay.slug}`} className="featured-card">
                                     <div className="featured-img">
-                                        {filtered[0].coverImage
-                                            ? <img src={filtered[0].coverImage} alt={filtered[0].title} />
+                                        {newsOfDay.coverImage
+                                            ? <img src={newsOfDay.coverImage} alt={newsOfDay.title} />
                                             : <div className="no-img"><TrendingUp size={48} color="#334155" /></div>
                                         }
                                     </div>
                                     <div className="featured-body">
-                                        <div className="featured-cat">✦ {filtered[0].category}</div>
-                                        <h2 className="featured-title">{filtered[0].title}</h2>
-                                        <p className="featured-excerpt">{filtered[0].excerpt || filtered[0].content?.substring(0, 200)}</p>
+                                        <div className="featured-cat">✦ {newsOfDay.category} {newsOfDay.isNewsOfDay && "(News of the Day)"}</div>
+                                        <h2 className="featured-title">{newsOfDay.title}</h2>
+                                        <p className="featured-excerpt">{newsOfDay.excerpt || (newsOfDay.content?.replace(/<[^>]*>/g, '').substring(0, 200))}</p>
                                         <div className="featured-meta">
-                                            <span className="meta-item"><Clock size={13} />{readTime(filtered[0].content)}</span>
-                                            <span className="meta-item"><Eye size={13} />{filtered[0].views || 0}</span>
-                                            <span className="meta-item"><Heart size={13} />{filtered[0].likes || 0}</span>
-                                            <span style={{ marginLeft: 'auto', color: '#64748b' }}>{formatDate(filtered[0].createdAt)}</span>
+                                            <span className="meta-item"><Clock size={13} />{readTime(newsOfDay.content)}</span>
+                                            <span className="meta-item"><Eye size={13} />{newsOfDay.views || 0}</span>
+                                            <span className="meta-item"><Heart size={13} />{newsOfDay.likes || 0}</span>
+                                            <span style={{ marginLeft: 'auto', color: '#64748b' }}>{formatDate(newsOfDay.createdAt)}</span>
                                         </div>
                                     </div>
                                 </Link>
@@ -207,7 +210,7 @@ export default function NewsPage() {
 
                         {/* Rest of articles */}
                         <div className="articles-grid" style={{ marginTop: 32 }}>
-                            {(search ? filtered : filtered.slice(1)).map((article, idx) => (
+                            {(search ? filtered : otherArticles).map((article, idx) => (
                                 <motion.div
                                     key={article._id}
                                     initial={{ opacity: 0, y: 20 }}
@@ -224,7 +227,7 @@ export default function NewsPage() {
                                         <div className="article-body">
                                             <div className="article-cat">{article.category}</div>
                                             <h3 className="article-title">{article.title}</h3>
-                                            <p className="article-excerpt">{article.excerpt || article.content?.substring(0, 180)}</p>
+                                            <p className="article-excerpt">{article.excerpt || article.content?.replace(/<[^>]*>/g, '').substring(0, 180)}</p>
                                             <div className="article-footer">
                                                 <div className="article-stats">
                                                     <span className="stat"><Eye size={12} />{article.views || 0}</span>
