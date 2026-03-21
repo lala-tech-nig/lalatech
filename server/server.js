@@ -11,6 +11,9 @@ const contentRoutes = require('./routes/contentRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
+const adminConfigRoutes = require('./routes/adminConfigRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -26,6 +29,11 @@ app.use('/api/content', contentRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/service-requests', serviceRequestRoutes);
+app.use('/api/config', adminConfigRoutes);
+app.use('/api/upload', uploadRoutes);
+
+// Serve static files from uploads folder
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/test', (req, res) => {
     res.json({ message: 'Lala Tech API is running' });

@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import API_BASE_URL from '@/lib/api';
+import API_BASE_URL, { BASE_URL } from '@/lib/api';
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
@@ -15,7 +15,9 @@ export default function AdminDashboard() {
     const [jobs, setJobs] = useState([]);
     const [applications, setApplications] = useState([]);
     const [serviceRequests, setServiceRequests] = useState([]);
+    const [config, setConfig] = useState({ modalActive: false, modalType: 'image', modalMediaUrl: '', modalWhatsAppNumber: '' });
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // New Forms
@@ -50,6 +52,9 @@ export default function AdminDashboard() {
             } else if (activeTab === 'service-requests') {
                 const res = await fetch(`${API_BASE_URL}/service-requests`);
                 setServiceRequests(await res.json());
+            } else if (activeTab === 'promotion') {
+                const res = await fetch(`${API_BASE_URL}/config`);
+                setConfig(await res.json());
             }
         } catch (err) {
             toast.error('Failed to load data');
@@ -142,6 +147,42 @@ export default function AdminDashboard() {
         } catch (err) { toast.error('Error updating content'); }
     };
 
+    const saveConfig = async () => {
+        try {
+            await fetch(`${API_BASE_URL}/config`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            toast.success('Settings updated');
+        } catch (err) { toast.error('Error updating settings'); }
+    };
+
+    const handleFileUpload = async (e, callback) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch(`${API_BASE_URL.replace('/api', '')}/api/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.url) {
+                callback(`${API_BASE_URL.replace('/api', '')}${data.url}`);
+                toast.success('File uploaded');
+            }
+        } catch (err) {
+            toast.error('Upload failed');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     useEffect(() => {
         setIsSidebarOpen(false);
     }, [activeTab]);
@@ -209,6 +250,7 @@ export default function AdminDashboard() {
                                         { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
                                         { id: 'content', icon: FileText, label: 'Content Manager' },
                                         { id: 'projects', icon: Briefcase, label: 'Ventures' },
+                                        { id: 'promotion', icon: Megaphone, label: 'Promotion Modal' },
                                         { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
                                         { id: 'careers', icon: Users, label: 'Careers' },
                                         { id: 'messages', icon: MessageSquare, label: 'Messages' },
@@ -543,6 +585,99 @@ export default function AdminDashboard() {
                                         <p className="text-slate-500 font-medium">Inbox is empty. No messages yet.</p>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'promotion' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Promotion Modal</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Configure the promotional popup that appearing on website load.</p>
+
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-md space-y-8">
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div>
+                                        <h3 className="font-bold text-slate-900">Modal Activity</h3>
+                                        <p className="text-xs text-slate-500">Enable or disable the popup globally.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setConfig({ ...config, modalActive: !config.modalActive })}
+                                        className={`w-14 h-8 rounded-full transition-all relative ${config.modalActive ? 'bg-[#f89e35]' : 'bg-slate-300'}`}
+                                    >
+                                        <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${config.modalActive ? 'left-7' : 'left-1'}`}></div>
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                        Media Type
+                                        <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-400 font-black uppercase">Required</span>
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {['image', 'video'].map(type => (
+                                            <button
+                                                key={type}
+                                                onClick={() => setConfig({ ...config, modalType: type })}
+                                                className={`py-4 rounded-xl font-bold border-2 transition-all capitalize ${config.modalType === type ? 'border-[#f89e35] bg-[#f89e35]/5 text-[#f89e35]' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                                            >
+                                                {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="font-bold text-slate-900 flex items-center justify-between">
+                                        Media Content
+                                        {uploading && <Loader2 className="w-4 h-4 animate-spin text-[#f89e35]" />}
+                                    </h3>
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <input
+                                                type="url"
+                                                value={config.modalMediaUrl || ''}
+                                                onChange={e => setConfig({ ...config, modalMediaUrl: e.target.value })}
+                                                placeholder="Paste media URL or upload below..."
+                                                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 font-medium focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition"
+                                            />
+                                        </div>
+                                        <div className="relative group">
+                                            <input
+                                                type="file"
+                                                accept={config.modalType === 'image' ? "image/*" : "video/*"}
+                                                onChange={(e) => handleFileUpload(e, (url) => setConfig({ ...config, modalMediaUrl: url }))}
+                                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                            />
+                                            <div className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-3 text-slate-400 font-bold group-hover:border-[#f89e35] group-hover:text-[#f89e35] transition-all bg-white">
+                                                <Plus className="w-5 h-5" />
+                                                Click to Upload {config.modalType === 'image' ? 'Image' : 'Video'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-medium italic">Supports JPG, PNG, and MP4. Max size 50MB.</p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="font-bold text-slate-900">WhatsApp Redirection</h3>
+                                    <input
+                                        type="text"
+                                        value={config.modalWhatsAppNumber || ''}
+                                        onChange={e => setConfig({ ...config, modalWhatsAppNumber: e.target.value })}
+                                        placeholder="e.g. 2348123456789"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 font-medium focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition"
+                                    />
+                                    <p className="text-[10px] text-slate-400 font-medium italic">Enter the number without '+'. User will be redirected on click.</p>
+                                </div>
+
+                                <div className="pt-4">
+                                    <button
+                                        onClick={saveConfig}
+                                        className="w-full bg-[#110f0e] hover:bg-slate-800 text-white font-black py-4 rounded-xl transition shadow-lg flex items-center justify-center gap-2 group"
+                                    >
+                                        Save Changes
+                                        <div className="w-1.5 h-1.5 bg-[#f89e35] rounded-full group-hover:scale-150 transition-transform"></div>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
