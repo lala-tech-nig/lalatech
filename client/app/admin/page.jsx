@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import API_BASE_URL, { BASE_URL } from '@/lib/api';
@@ -16,6 +16,7 @@ export default function AdminDashboard() {
     const [applications, setApplications] = useState([]);
     const [serviceRequests, setServiceRequests] = useState([]);
     const [config, setConfig] = useState({ modalActive: false, modalType: 'image', modalMediaUrl: '', modalWhatsAppNumber: '' });
+    const [analyticsData, setAnalyticsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -55,6 +56,9 @@ export default function AdminDashboard() {
             } else if (activeTab === 'promotion') {
                 const res = await fetch(`${API_BASE_URL}/config`);
                 setConfig(await res.json());
+            } else if (activeTab === 'analytics') {
+                const res = await fetch(`${API_BASE_URL}/analytics`);
+                setAnalyticsData(await res.json());
             }
         } catch (err) {
             toast.error('Failed to load data');
@@ -248,6 +252,7 @@ export default function AdminDashboard() {
                                 <nav className="space-y-2">
                                     {[
                                         { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
+                                        { id: 'analytics', icon: Activity, label: 'Full Analytics' },
                                         { id: 'content', icon: FileText, label: 'Content Manager' },
                                         { id: 'projects', icon: Briefcase, label: 'Ventures' },
                                         { id: 'promotion', icon: Megaphone, label: 'Promotion Modal' },
@@ -300,6 +305,41 @@ export default function AdminDashboard() {
                                     <h3 className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-3">Total Visitors</h3>
                                     <p className="text-5xl font-black text-slate-900">{stats.visitors}</p>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'analytics' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Full Analytics</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Monitor user activity, clicks, active IPs, pages, and time spent on your platform.</p>
+
+                            <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[700px]">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                                            <th className="p-4">IP Address</th>
+                                            <th className="p-4">Page</th>
+                                            <th className="p-4">Time Spent</th>
+                                            <th className="p-4">Clicks Recorded</th>
+                                            <th className="p-4">Last Updated</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {analyticsData.map((d) => (
+                                            <tr key={d._id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <td className="p-4 font-bold text-slate-900">{d.ip}</td>
+                                                <td className="p-4 font-medium text-slate-600">{d.page}</td>
+                                                <td className="p-4 font-medium text-slate-600">{d.timeSpent} sec</td>
+                                                <td className="p-4 font-medium text-slate-600 cursor-help" title={JSON.stringify(d.clicks)}>{d.clicks ? d.clicks.length : 0} clicks</td>
+                                                <td className="p-4 font-medium text-slate-500 text-sm whitespace-nowrap">{new Date(d.updatedAt).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {analyticsData.length === 0 && !loading && (
+                                    <div className="text-center py-10 text-slate-500 font-medium">No analytics data collected yet.</div>
+                                )}
                             </div>
                         </div>
                     )}

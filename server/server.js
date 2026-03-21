@@ -11,8 +11,13 @@ const contentRoutes = require('./routes/contentRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
+const productRoutes = require('./routes/productRoutes');
+const postRoutes = require('./routes/postRoutes');
+const analyticRoutes = require('./routes/analyticRoutes');
 const adminConfigRoutes = require('./routes/adminConfigRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const courseRoutes = require('./routes/courseRoutes');
+const toolRoutes = require('./routes/toolRoutes');
 const path = require('path');
 
 const app = express();
@@ -24,6 +29,9 @@ app.use(express.json());
 // Main Routes
 app.use('/api/projects', projectRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/analytics', analyticRoutes);
 app.use('/api/stats', visitorRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/jobs', jobRoutes);
@@ -31,6 +39,8 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/service-requests', serviceRequestRoutes);
 app.use('/api/config', adminConfigRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/tools', toolRoutes);
 
 // Serve static files from uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -1,29 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
+require('dotenv').config();
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-// Multer storage configuration
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
+// Configure Multer storage for Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    // Basic setup to allow various resources
+    return {
+      folder: 'lalatech',
+      resource_type: 'auto',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'pdf', 'doc', 'docx']
+    };
+  }
 });
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for videos
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 // Upload endpoint
@@ -31,8 +35,9 @@ router.post('/', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
     }
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.json({ url: fileUrl });
+    
+    // Cloudinary returns the URL in req.file.path
+    res.json({ url: req.file.path });
 });
 
 module.exports = router;

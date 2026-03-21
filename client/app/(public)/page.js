@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function Home() {
   let content = {};
   try {
-    const res = await fetch('http://localhost:5000/api/content', { cache: 'no-store' });
+    const res = await fetch('http://127.0.0.1:5000/api/content', { cache: 'no-store' });
     if (res.ok) {
       content = await res.json();
     }
