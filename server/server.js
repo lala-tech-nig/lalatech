@@ -18,7 +18,10 @@ const adminConfigRoutes = require('./routes/adminConfigRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const toolRoutes = require('./routes/toolRoutes');
+const commentRoutes = require('./routes/commentRoutes');
+const newsRoutes = require('./routes/newsRoutes');
 const path = require('path');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,6 +44,9 @@ app.use('/api/config', adminConfigRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/tools', toolRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/news', newsRoutes);
+
 
 // Serve static files from uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

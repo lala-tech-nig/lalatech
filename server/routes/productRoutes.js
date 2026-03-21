@@ -4,7 +4,11 @@ const Product = require('../models/Product');
 
 router.get('/', async (req, res) => {
     try {
-        const products = await Product.find().sort({ createdAt: -1 });
+        const filter = {};
+        if (req.query.category && req.query.category !== 'All') {
+            filter.category = req.query.category;
+        }
+        const products = await Product.find(filter).sort({ createdAt: -1 });
         res.json(products);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -14,9 +18,10 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const product = new Product({
         title: req.body.title,
-        description: req.body.description,
+        description: req.body.description || '',
         price: req.body.price,
-        image: req.body.image
+        image: req.body.image,
+        category: req.body.category || 'General',
     });
 
     try {

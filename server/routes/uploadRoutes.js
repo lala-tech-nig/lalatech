@@ -36,8 +36,9 @@ router.post('/', upload.single('file'), (req, res) => {
         return res.status(400).json({ message: 'No file uploaded' });
     }
     
-    // Cloudinary returns the URL in req.file.path
-    res.json({ url: req.file.path });
+    // Cloudinary returns the full https URL in req.file.path
+    res.json({ url: req.file.path, secure_url: req.file.path });
 });
+
 
 module.exports = router;

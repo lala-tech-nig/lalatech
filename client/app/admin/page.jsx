@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import API_BASE_URL, { BASE_URL } from '@/lib/api';
@@ -24,6 +24,25 @@ export default function AdminDashboard() {
     // New Forms
     const [newProject, setNewProject] = useState({ title: '', description: '', link: '', thumbnailUrl: '', category: 'Web Development' });
     const [newJob, setNewJob] = useState({ title: '', description: '', type: 'Full-time', location: 'Remote' });
+
+    const [shopProducts, setShopProducts] = useState([]);
+    const [courses, setCourses] = useState([]);
+    const [feedPosts, setFeedPosts] = useState([]);
+    const [newsArticles, setNewsArticles] = useState([]);
+    const [newProduct, setNewProduct] = useState({ title: '', description: '', price: '', image: '', category: 'General' });
+    const [newCourse, setNewCourse] = useState({ title: '', description: '', videoUrl: '', thumbnailUrl: '', introText: '', category: 'General' });
+    const [newFeedPost, setNewFeedPost] = useState({ content: '', image: '' });
+    const [newArticle, setNewArticle] = useState({ title: '', content: '', excerpt: '', category: 'Technology', tags: '', coverImage: '', author: 'Lala Tech' });
+    const [articleCoverPreview, setArticleCoverPreview] = useState('');
+    const [feedComments, setFeedComments] = useState({});
+    const [adminReplies, setAdminReplies] = useState({});
+    const [activeFeedComments, setActiveFeedComments] = useState(null);
+
+    // Upload Previews
+    const [productImagePreview, setProductImagePreview] = useState('');
+    const [courseThumbPreview, setCourseThumbPreview] = useState('');
+    const [feedImagePreview, setFeedImagePreview] = useState('');
+    const [promoMediaPreview, setPromoMediaPreview] = useState('');
 
     useEffect(() => {
         fetchData();
@@ -59,6 +78,18 @@ export default function AdminDashboard() {
             } else if (activeTab === 'analytics') {
                 const res = await fetch(`${API_BASE_URL}/analytics`);
                 setAnalyticsData(await res.json());
+            } else if (activeTab === 'shop') {
+                const res = await fetch(`${API_BASE_URL}/products`);
+                if (res.ok) setShopProducts(await res.json());
+            } else if (activeTab === 'courses') {
+                const res = await fetch(`${API_BASE_URL}/courses`);
+                if (res.ok) setCourses(await res.json());
+            } else if (activeTab === 'feed') {
+                const res = await fetch(`${API_BASE_URL}/posts`);
+                if (res.ok) setFeedPosts(await res.json());
+            } else if (activeTab === 'news') {
+                const res = await fetch(`${API_BASE_URL}/news/admin/all`);
+                if (res.ok) setNewsArticles(await res.json());
             }
         } catch (err) {
             toast.error('Failed to load data');
@@ -131,6 +162,80 @@ export default function AdminDashboard() {
         } catch (err) { toast.error('Error posting job'); }
     };
 
+    const deleteProduct = async (id) => {
+        if (!confirm('Delete this product?')) return;
+        try { await fetch(`${API_BASE_URL}/products/${id}`, { method: 'DELETE' }); toast.success('Product deleted'); fetchData(); } catch (err) { toast.error('Error deleting product'); }
+    };
+    const addProduct = async (e) => {
+        e.preventDefault();
+        try { await fetch(`${API_BASE_URL}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newProduct) }); toast.success('Product added'); setNewProduct({ title: '', price: '', image: '' }); fetchData(); } catch (err) { toast.error('Error adding product'); }
+    };
+
+    const deleteCourse = async (id) => {
+        if (!confirm('Delete this course?')) return;
+        try { await fetch(`${API_BASE_URL}/courses/${id}`, { method: 'DELETE' }); toast.success('Course deleted'); fetchData(); } catch (err) { toast.error('Error deleting course'); }
+    };
+    const addCourse = async (e) => {
+        e.preventDefault();
+        try { await fetch(`${API_BASE_URL}/courses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newCourse) }); toast.success('Course added'); setNewCourse({ title: '', description: '', videoUrl: '', thumbnailUrl: '', introText: '', category: 'General' }); setCourseThumbPreview(''); fetchData(); } catch (err) { toast.error('Error adding course'); }
+    };
+
+    const deleteFeedPost = async (id) => {
+        if (!confirm('Delete this feed post?')) return;
+        try { await fetch(`${API_BASE_URL}/posts/${id}`, { method: 'DELETE' }); toast.success('Post deleted'); fetchData(); } catch (err) { toast.error('Error deleting post'); }
+    };
+    const addFeedPost = async (e) => {
+        e.preventDefault();
+        try { await fetch(`${API_BASE_URL}/posts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newFeedPost) }); toast.success('Post added'); setNewFeedPost({ content: '', image: '' }); setFeedImagePreview(''); fetchData(); } catch (err) { toast.error('Error adding post'); }
+    };
+
+    // News
+    const addArticle = async (e) => {
+        e.preventDefault();
+        try {
+            const payload = { ...newArticle, tags: newArticle.tags.split(',').map(t => t.trim()).filter(Boolean) };
+            await fetch(`${API_BASE_URL}/news`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            toast.success('Article published');
+            setNewArticle({ title: '', content: '', excerpt: '', category: 'Technology', tags: '', coverImage: '', author: 'Lala Tech' });
+            setArticleCoverPreview('');
+            fetchData();
+        } catch (err) { toast.error('Error publishing article'); }
+    };
+    const deleteArticle = async (id) => {
+        if (!confirm('Delete this article?')) return;
+        try { await fetch(`${API_BASE_URL}/news/${id}`, { method: 'DELETE' }); toast.success('Article deleted'); setNewsArticles(prev => prev.filter(a => a._id !== id)); } catch (err) { toast.error('Error deleting article'); }
+    };
+
+    // Feed comment admin reply
+    const loadFeedComments = async (postId) => {
+        if (activeFeedComments === postId) { setActiveFeedComments(null); return; }
+        try {
+            const res = await fetch(`${API_BASE_URL}/comments/${postId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setFeedComments(prev => ({ ...prev, [postId]: data }));
+            }
+        } catch (e) {}
+        setActiveFeedComments(postId);
+    };
+    const sendAdminReply = async (commentId, postId) => {
+        const text = adminReplies[commentId]?.trim();
+        if (!text) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ author: 'Lala Tech Admin', content: text, isAdmin: true }),
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setFeedComments(prev => ({ ...prev, [postId]: (prev[postId] || []).map(c => c._id === commentId ? updated : c) }));
+                setAdminReplies(prev => ({ ...prev, [commentId]: '' }));
+                toast.success('Reply sent');
+            }
+        } catch (e) { toast.error('Failed to reply'); }
+    };
+
     const deleteApplication = async (id) => {
         if (!confirm('Delete this application?')) return;
         try {
@@ -162,28 +267,53 @@ export default function AdminDashboard() {
         } catch (err) { toast.error('Error updating settings'); }
     };
 
-    const handleFileUpload = async (e, callback) => {
+    const handleFileUpload = async (e, callback, setPreview) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        // Show local blob preview immediately before upload completes
+        if (setPreview) {
+            const localUrl = URL.createObjectURL(file);
+            setPreview(localUrl);
+        }
 
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            const res = await fetch(`${API_BASE_URL.replace('/api', '')}/api/upload`, {
+            const uploadEndpoint = `${API_BASE_URL.replace('/api', '')}/api/upload`;
+            const res = await fetch(uploadEndpoint, {
                 method: 'POST',
                 body: formData
             });
             const data = await res.json();
+            // data.url is already the full Cloudinary https:// URL — do NOT prepend anything
             if (data.url) {
-                callback(`${API_BASE_URL.replace('/api', '')}${data.url}`);
-                toast.success('File uploaded');
+                callback(data.url);
+                if (setPreview) setPreview(data.url);
+                toast.success('Uploaded to Cloudinary ✓');
+            } else {
+                toast.error('Upload failed: no URL returned');
             }
         } catch (err) {
-            toast.error('Upload failed');
+            console.error('Upload error:', err);
+            toast.error('Upload failed — is the server running?');
         } finally {
             setUploading(false);
+        }
+    };
+
+    // Extract YouTube video ID and auto-set thumbnail
+    const handleVideoUrlChange = (url) => {
+        setNewCourse(prev => ({ ...prev, videoUrl: url }));
+        const urlMatch = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+        if (urlMatch) {
+            const videoId = urlMatch[1];
+            const autoThumb = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+            if (!newCourse.thumbnailUrl) {
+                setCourseThumbPreview(autoThumb);
+            }
         }
     };
 
@@ -230,12 +360,13 @@ export default function AdminDashboard() {
                             exit={{ x: '-100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             className={`
-                                fixed lg:static inset-y-0 left-0 w-72 bg-slate-50 border-r border-slate-200/60 p-6 flex flex-col justify-between 
+                                fixed lg:static inset-y-0 left-0 w-72 bg-slate-50 border-r border-slate-200/60 flex flex-col
                                 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.05)] z-50 lg:z-10
                             `}
                         >
-                            <div>
-                                <div className="flex items-center justify-between mb-10">
+                            {/* Sidebar Header - Sticky */}
+                            <div className="p-6 pb-4 flex-shrink-0">
+                                <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-3">
                                         <span className="w-8 h-8 rounded-full bg-[#f89e35] flex items-center justify-center">
                                             <span className="w-3 h-3 rounded-full bg-slate-50"></span>
@@ -248,7 +379,10 @@ export default function AdminDashboard() {
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
+                            </div>
 
+                            {/* Scrollable Nav */}
+                            <div className="flex-1 overflow-y-auto px-6 pb-4">
                                 <nav className="space-y-2">
                                     {[
                                         { id: 'overview', icon: LayoutDashboard, label: 'Overview' },
@@ -256,6 +390,10 @@ export default function AdminDashboard() {
                                         { id: 'content', icon: FileText, label: 'Content Manager' },
                                         { id: 'projects', icon: Briefcase, label: 'Ventures' },
                                         { id: 'promotion', icon: Megaphone, label: 'Promotion Modal' },
+                                        { id: 'shop', icon: ShoppingBag, label: 'Shop Manager' },
+                                        { id: 'courses', icon: Youtube, label: 'Course Manager' },
+                                        { id: 'feed', icon: Rss, label: 'Feed Manager' },
+                                        { id: 'news', icon: TrendingUp, label: 'News Manager' },
                                         { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
                                         { id: 'careers', icon: Users, label: 'Careers' },
                                         { id: 'messages', icon: MessageSquare, label: 'Messages' },
@@ -275,7 +413,8 @@ export default function AdminDashboard() {
                                 </nav>
                             </div>
 
-                            <div className="pb-4">
+                            {/* Footer - sticky at bottom */}
+                            <div className="p-6 pt-4 flex-shrink-0 border-t border-slate-200/60">
                                 <Link href="/" className="flex items-center gap-3 font-semibold text-slate-500 hover:text-slate-900 px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all">
                                     <LogOut className="w-5 h-5" /> Back to Website
                                 </Link>
@@ -718,6 +857,346 @@ export default function AdminDashboard() {
                                         <div className="w-1.5 h-1.5 bg-[#f89e35] rounded-full group-hover:scale-150 transition-transform"></div>
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+                    {activeTab === 'shop' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Shop Manager</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Manage products available in your shop.</p>
+                            
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm mb-10 max-w-2xl transition hover:shadow-md">
+                                <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                    <span className="bg-[#f89e35]/10 p-2 rounded-lg text-[#f89e35]"><Plus className="w-5 h-5" /></span>
+                                    Add New Product
+                                </h3>
+                                <form onSubmit={addProduct} className="space-y-5">
+                                    <input type="text" placeholder="Product Title" required value={newProduct.title} onChange={e => setNewProduct({ ...newProduct, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
+                                    <textarea placeholder="Product Description" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 resize-none" rows={2} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="number" placeholder="Price (e.g. 15000)" required value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
+                                        <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35]">
+                                            {['General','Electronics','Accessories','Software','Clothing','Books','Other'].map(c => <option key={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="relative group">
+                                        <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => setNewProduct({ ...newProduct, image: url }), setProductImagePreview)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                        {productImagePreview ? (
+                                            <div className="relative">
+                                                <img src={productImagePreview} alt="Preview" className="w-full h-48 object-cover rounded-xl border border-slate-200" />
+                                                <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                                                    {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : '✓ Click to change'}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full py-8 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-400 font-bold group-hover:border-[#f89e35] group-hover:text-[#f89e35] bg-white transition-all">
+                                                {uploading ? <Loader2 className="w-6 h-6 animate-spin text-[#f89e35]" /> : <ImageIcon className="w-7 h-7" />}
+                                                <span>Upload Product Image</span>
+                                                <span className="text-[11px] font-normal text-slate-400">JPG, PNG, WEBP</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-end pt-2">
+                                        <button type="submit" disabled={uploading} className="w-full md:w-auto bg-[#110f0e] text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50">Add Product</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div className="flex items-center gap-4 mb-6 overflow-x-auto pb-2 scrollbar-none">
+                                {['All','General','Electronics','Accessories','Software','Clothing','Books','Other'].map(cat => (
+                                    <button 
+                                        key={cat}
+                                        onClick={() => {
+                                            const params = cat === 'All' ? '' : `?category=${cat}`;
+                                            fetch(`${API_BASE_URL}/products${params}`).then(r => r.json()).then(setShopProducts);
+                                        }}
+                                        className="px-4 py-2 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-500 hover:border-[#f89e35] hover:text-[#f89e35] transition whitespace-nowrap"
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {shopProducts.map(p => (
+                                    <div key={p._id} className="bg-white border rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-md transition">
+                                        <div className="absolute top-4 left-4 z-10 flex gap-2">
+                                            <span className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-[#f89e35] shadow-sm uppercase">{p.category || 'General'}</span>
+                                        </div>
+                                        <img src={p.image} className="w-full h-48 object-cover bg-slate-100" />
+                                        <div className="p-5">
+                                            <h4 className="font-bold text-slate-900 mb-1 truncate">{p.title}</h4>
+                                            <p className="text-[#f89e35] font-black text-lg">₦{p.price}</p>
+                                        </div>
+                                        <button onClick={() => deleteProduct(p._id)} className="absolute top-4 right-4 bg-white text-slate-300 hover:text-red-500 p-2.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'courses' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-3xl font-black text-slate-900 mb-2">Course Manager</h1>
+                            <p className="text-slate-500 mb-6">Manage educational courses.</p>
+                            
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border mb-10 max-w-2xl transition hover:shadow-md shadow-sm">
+                                <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2"><Plus className="w-5 h-5 text-[#f89e35]" /> Add New Course</h3>
+                                <form onSubmit={addCourse} className="space-y-4">
+                                    <input type="text" placeholder="Course Title" required value={newCourse.title} onChange={e => setNewCourse({ ...newCourse, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
+                                    <textarea placeholder="Course Description" required value={newCourse.description} onChange={e => setNewCourse({ ...newCourse, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl resize-none focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
+                                    <select value={newCourse.category} onChange={e => setNewCourse({ ...newCourse, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]">
+                                        {['General','Programming','Design','Business','Marketing','Data Science','DevOps','Other'].map(c => <option key={c}>{c}</option>)}
+                                    </select>
+                                    
+                                    {/* YouTube URL - auto-fills thumbnail */}
+                                    <div>
+                                        <input type="url" placeholder="YouTube Video URL (e.g. https://youtu.be/...)" required value={newCourse.videoUrl} onChange={e => handleVideoUrlChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
+                                        <p className="text-[11px] text-slate-400 mt-1 font-medium">Thumbnail will be auto-generated from the video link</p>
+                                    </div>
+
+                                    {/* Intro Text (TTS) */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Intro Script <span className="text-slate-400 font-normal">(optional — played as audio before video)</span></label>
+                                        <textarea
+                                            placeholder="e.g. Welcome to this course! Lala Tech recommends this video because..."
+                                            value={newCourse.introText}
+                                            onChange={e => setNewCourse({ ...newCourse, introText: e.target.value })}
+                                            rows={3}
+                                            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl resize-none focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20"
+                                        />
+                                    </div>
+
+                                    {/* Thumbnail preview + optional override */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Custom Thumbnail <span className="text-slate-400 font-normal">(optional — overrides auto-generated)</span></label>
+                                        <div className="relative group">
+                                            <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => { setNewCourse({ ...newCourse, thumbnailUrl: url }); }, setCourseThumbPreview)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                            {courseThumbPreview ? (
+                                                <div className="relative">
+                                                    <img src={courseThumbPreview} alt="Thumbnail preview" className="w-full h-44 object-cover rounded-xl border border-slate-200" />
+                                                    <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                                                        {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : '✓ Click to change'}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="w-full py-8 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center gap-2 justify-center text-slate-400 font-bold bg-white group-hover:text-[#f89e35] group-hover:border-[#f89e35] transition-all">
+                                                    {uploading ? <Loader2 className="w-6 h-6 animate-spin text-[#f89e35]" /> : <ImageIcon className="w-7 h-7" />}
+                                                    <span>Upload Custom Thumbnail</span>
+                                                    <span className="text-[11px] font-normal text-slate-400">Leave empty to use YouTube's thumbnail</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" disabled={uploading} className="bg-[#110f0e] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-bold w-full md:w-auto hover:bg-slate-800 transition">Add Course</button>
+                                </form>
+                            </div>
+
+                            <div className="flex items-center gap-4 mb-6 overflow-x-auto pb-2 scrollbar-none">
+                                {['All','General','Programming','Design','Business','Marketing','Data Science','DevOps','Other'].map(cat => (
+                                    <button 
+                                        key={cat}
+                                        onClick={() => {
+                                            const params = cat === 'All' ? '' : `?category=${cat}`;
+                                            fetch(`${API_BASE_URL}/courses${params}`).then(r => r.json()).then(setCourses);
+                                        }}
+                                        className="px-4 py-2 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-500 hover:border-[#f89e35] hover:text-[#f89e35] transition whitespace-nowrap"
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {courses.map(c => (
+                                    <div key={c._id} className="bg-white border rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-md transition">
+                                        <div className="absolute top-4 left-4 z-10 flex gap-2">
+                                            <span className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-[#f89e35] shadow-sm uppercase">{c.category || 'General'}</span>
+                                        </div>
+                                        <img src={c.thumbnailUrl} className="w-full h-40 object-cover bg-slate-100" />
+                                        <div className="p-4">
+                                            <h4 className="font-bold truncate text-slate-900">{c.title}</h4>
+                                        </div>
+                                        <button onClick={() => deleteCourse(c._id)} className="absolute top-4 right-4 bg-white p-2.5 rounded-full text-slate-300 hover:text-red-500 shadow-lg opacity-0 group-hover:opacity-100 transition group-hover:translate-y-0 translate-y-2"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'feed' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-3xl font-black text-slate-900 mb-2">Feed Manager</h1>
+                            <p className="text-slate-500 mb-6">Manage posts for the public feed.</p>
+                            
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border mb-10 max-w-2xl shadow-sm hover:shadow-md transition">
+                                <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2"><Plus className="w-5 h-5 text-[#f89e35]" /> Create Feed Post</h3>
+                                <form onSubmit={addFeedPost} className="space-y-4">
+                                    <textarea placeholder="What's on your mind?" value={newFeedPost.content} onChange={e => setNewFeedPost({ ...newFeedPost, content: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl min-h-[120px] resize-none focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
+                                    <div className="relative group">
+                                        <input type="file" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, (url) => setNewFeedPost({ ...newFeedPost, image: url }), setFeedImagePreview)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                        {feedImagePreview ? (
+                                            <div className="relative">
+                                                {feedImagePreview.includes('.mp4') || feedImagePreview.startsWith('blob') ? (
+                                                    <video src={feedImagePreview} className="w-full max-h-64 rounded-xl border border-slate-200 object-cover bg-black" />
+                                                ) : (
+                                                    <img src={feedImagePreview} alt="Preview" className="w-full max-h-64 object-cover rounded-xl border border-slate-200" />
+                                                )}
+                                                <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                                                    {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : '✓ Click to change'}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full py-8 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center gap-2 justify-center text-slate-400 font-bold bg-white group-hover:text-[#f89e35] group-hover:border-[#f89e35] transition-all">
+                                                {uploading ? <Loader2 className="w-6 h-6 animate-spin text-[#f89e35]" /> : <ImageIcon className="w-7 h-7" />}
+                                                <span>Attach Image or Video</span>
+                                                <span className="text-[11px] font-normal text-slate-400">JPG, PNG, MP4</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button type="submit" disabled={uploading || (!newFeedPost.content && !newFeedPost.image)} className="bg-[#110f0e] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-bold w-full md:w-auto hover:bg-slate-800 transition">Post to Feed</button>
+                                </form>
+                            </div>
+
+                            <div className="grid gap-6 max-w-2xl">
+                                {feedPosts.map(p => (
+                                    <div key={p._id} className="bg-white border text-left rounded-3xl p-6 relative group shadow-sm hover:shadow-md transition">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-600">L</div>
+                                            <div>
+                                                <div className="font-bold text-slate-900">Lala Tech</div>
+                                                <div className="text-xs font-semibold text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</div>
+                                            </div>
+                                        </div>
+                                        {p.content && <p className="mb-4 text-slate-700 whitespace-pre-wrap">{p.content}</p>}
+                                        {p.image && (
+                                            p.image.includes('.mp4') ? <video src={p.image} className="w-full rounded-2xl max-h-80 object-cover bg-black" controls /> : <img src={p.image} className="w-full rounded-2xl max-h-80 object-cover border border-slate-100" />
+                                        )}
+
+                                        <div className="mt-4 pt-4 border-t border-slate-100">
+                                            <button 
+                                                onClick={() => loadFeedComments(p._id)}
+                                                className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-[#f89e35] transition"
+                                            >
+                                                <MessageSquare className="w-4 h-4" />
+                                                {activeFeedComments === p._id ? 'Hide Comments' : 'Manage Comments'}
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {activeFeedComments === p._id && (
+                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-4 space-y-4 overflow-hidden">
+                                                        {(feedComments[p._id] || []).length === 0 ? (
+                                                            <p className="text-xs text-slate-400 italic">No comments yet.</p>
+                                                        ) : (
+                                                            feedComments[p._id].map(comment => (
+                                                                <div key={comment._id} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-bold text-xs text-slate-900">{comment.author}</span>
+                                                                            {comment.isAdmin && <span className="bg-[#f89e35] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-black">Admin</span>}
+                                                                        </div>
+                                                                        <span className="text-[10px] text-slate-400 italic">{new Date(comment.createdAt).toLocaleString()}</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-600 mb-3">{comment.content}</p>
+                                                                    
+                                                                    {/* Admin Reply Input */}
+                                                                    <div className="flex gap-2">
+                                                                        <input 
+                                                                            type="text" 
+                                                                            placeholder="Reply as Admin..." 
+                                                                            value={adminReplies[comment._id] || ''} 
+                                                                            onChange={e => setAdminReplies({ ...adminReplies, [comment._id]: e.target.value })}
+                                                                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#f89e35]"
+                                                                        />
+                                                                        <button 
+                                                                            onClick={() => sendAdminReply(comment._id, p._id)}
+                                                                            className="bg-slate-900 text-white p-1.5 rounded-lg hover:bg-slate-800 transition"
+                                                                        >
+                                                                            <Reply className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                        <button onClick={() => deleteFeedPost(p._id)} className="absolute top-6 right-6 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-5 h-5" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'news' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+                            <h1 className="text-3xl font-black text-slate-900 mb-2">News Manager</h1>
+                            <p className="text-slate-500 mb-6">Create and manage blog articles and news updates.</p>
+
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border mb-10 max-w-3xl shadow-sm hover:shadow-md transition">
+                                <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2"><Plus className="w-5 h-5 text-[#f89e35]" /> Publish New Article</h3>
+                                <form onSubmit={addArticle} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <input type="text" placeholder="Article Title" required value={newArticle.title} onChange={e => setNewArticle({ ...newArticle, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
+                                        <select value={newArticle.category} onChange={e => setNewArticle({ ...newArticle, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]">
+                                            {['Technology', 'Business', 'Design', 'Tutorial', 'Industry News', 'General'].map(c => <option key={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    
+                                    <input type="text" placeholder="Excerpt (Short summary)" required value={newArticle.excerpt} onChange={e => setNewArticle({ ...newArticle, excerpt: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
+                                    
+                                    <textarea placeholder="Article Content..." required value={newArticle.content} onChange={e => setNewArticle({ ...newArticle, content: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl min-h-[300px] font-sans focus:outline-none focus:border-[#f89e35]" />
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <input type="text" placeholder="Tags (comma separated: tech, coding)" value={newArticle.tags} onChange={e => setNewArticle({ ...newArticle, tags: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
+                                        <input type="text" placeholder="Author Name" value={newArticle.author} onChange={e => setNewArticle({ ...newArticle, author: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
+                                    </div>
+
+                                    <div className="relative group">
+                                        <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => setNewArticle({ ...newArticle, coverImage: url }), setArticleCoverPreview)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                        {articleCoverPreview ? (
+                                            <div className="relative">
+                                                <img src={articleCoverPreview} alt="Cover Preview" className="w-full h-56 object-cover rounded-xl border border-slate-200" />
+                                                <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center text-white font-bold">
+                                                    {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Change Cover Image'}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full py-12 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center gap-2 justify-center text-slate-400 font-bold bg-white group-hover:text-[#f89e35] group-hover:border-[#f89e35] transition-all">
+                                                {uploading ? <Loader2 className="w-6 h-6 animate-spin text-[#f89e35]" /> : <ImageIcon className="w-8 h-8" />}
+                                                <span>Upload Cover Image</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <button type="submit" disabled={uploading} className="bg-[#110f0e] text-white px-10 py-4 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50 flex items-center gap-2">
+                                        <TrendingUp className="w-5 h-5" /> Publish Article
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div className="space-y-6">
+                                {newsArticles.map(article => (
+                                    <div key={article._id} className="bg-white border rounded-3xl p-6 flex flex-col md:flex-row gap-6 relative group hover:shadow-md transition">
+                                        {article.coverImage && <img src={article.coverImage} className="w-full md:w-48 h-32 object-cover rounded-2xl bg-slate-100" />}
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{article.category}</span>
+                                                <span className="text-[11px] text-slate-400">{new Date(article.createdAt).toLocaleDateString()}</span>
+                                            </div>
+                                            <h4 className="font-bold text-slate-900 text-lg mb-2">{article.title}</h4>
+                                            <p className="text-sm text-slate-500 line-clamp-2 mb-3">{article.excerpt}</p>
+                                            <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                                                <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> {article.views}</span>
+                                                <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {article.likes}</span>
+                                                <span className="flex items-center gap-1"><Share2 className="w-3.5 h-3.5" /> {article.shares}</span>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => deleteArticle(article._id)} className="absolute top-6 right-6 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-5 h-5" /></button>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}

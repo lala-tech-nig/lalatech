@@ -2,10 +2,14 @@ const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
 
-// Get all courses
+// Get all courses (with optional category filter)
 router.get('/', async (req, res) => {
     try {
-        const courses = await Course.find().sort({ createdAt: -1 });
+        const filter = {};
+        if (req.query.category && req.query.category !== 'All') {
+            filter.category = req.query.category;
+        }
+        const courses = await Course.find(filter).sort({ createdAt: -1 });
         res.json(courses);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -14,13 +18,18 @@ router.get('/', async (req, res) => {
 
 // Add new course
 router.post('/', async (req, res) => {
+    let youtubeVideoId = req.body.youtubeVideoId || req.body.videoUrl || '';
+    const urlMatch = youtubeVideoId.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+    if (urlMatch) youtubeVideoId = urlMatch[1];
+
     const course = new Course({
         title: req.body.title,
         description: req.body.description,
-        youtubeVideoId: req.body.youtubeVideoId,
-        thumbnailUrl: req.body.thumbnailUrl
+        youtubeVideoId,
+        thumbnailUrl: req.body.thumbnailUrl,
+        introText: req.body.introText || '',
+        category: req.body.category || 'General',
     });
-
     try {
         const newCourse = await course.save();
         res.status(201).json(newCourse);
