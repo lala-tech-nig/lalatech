@@ -25,6 +25,7 @@ export default function Navbar() {
         { href: "/course", label: "Courses" },
         { href: "/shop", label: "Shop" },
         { href: "/feed", label: "Feed" },
+        { href: "/3d", label: "3D" },
     ];
 
     return (

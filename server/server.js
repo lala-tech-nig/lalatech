@@ -20,6 +20,7 @@ const courseRoutes = require('./routes/courseRoutes');
 const toolRoutes = require('./routes/toolRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const newsRoutes = require('./routes/newsRoutes');
+const threeDRoutes = require('./routes/threeDRoutes');
 const path = require('path');
 
 
@@ -46,6 +47,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/3d', threeDRoutes);
 
 
 // Serve static files from uploads folder

@@ -84,8 +84,24 @@ export default function CoursePage() {
         }
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.95;
-        utterance.pitch = 1;
+
+        // Attempt to select Male African English, fallback to UK Male, fallback to deeper default
+        const availableVoices = window.speechSynthesis.getVoices();
+        const preferred = availableVoices.find(v => 
+            (v.lang.includes('en-NG') || v.lang.includes('en-ZA') || v.lang.includes('en-KE')) && 
+            !v.name.toLowerCase().includes('female')
+        ) || availableVoices.find(v => 
+            v.lang.includes('en-GB') && 
+            (v.name.toLowerCase().includes('male') || !v.name.toLowerCase().includes('female'))
+        );
+        
+        if (preferred) {
+            utterance.voice = preferred;
+        }
+
+        utterance.rate = 0.90; // Slightly slower
+        utterance.pitch = 0.85; // Deeper pitch for male sound
+
 
         // Estimated duration for progress bar
         const estimatedDuration = Math.max(text.length * 55, 3000); // ~55ms per char

@@ -5,28 +5,51 @@ import { Download, UploadCloud, File, RefreshCw, X, ArrowLeft, Settings, Plus, T
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
+import { toolsList } from '@/lib/toolsList';
 
-// Mock DB for tools on the client side to retrieve details
-const toolDetails = {
-    'pdf-to-word': { name: 'PDF to Word', desc: 'Convert PDF files to editable Word (.docx) formats.', accept: '.pdf' },
-    'word-to-pdf': { name: 'Word to PDF', desc: 'Convert Word (.doc, .docx) documents to PDF easily.', accept: '.doc,.docx' },
-    'merge-pdf': { name: 'Merge PDF', desc: 'Combine multiple PDFs into one document. You can select multiple files.', accept: '.pdf', multiple: true },
-    'compress-pdf': { name: 'Compress PDF', desc: 'Reduce the file size of your PDF while optimizing quality.', accept: '.pdf' },
-    'jpg-to-pdf': { name: 'JPG to PDF', desc: 'Transform images into PDF documents. You can select multiple images.', accept: 'image/*', multiple: true },
-    'pdf-to-jpg': { name: 'PDF to JPG', desc: 'Extract pages from your PDF to high-quality JPG images.', accept: '.pdf' },
-    'split-pdf': { name: 'Split PDF', desc: 'Separate one page or a whole set for easy conversion in PDF.', accept: '.pdf' },
-    'extract-images': { name: 'Extract Images', desc: 'Extract all images contained inside a PDF.', accept: '.pdf' },
-    'protect-pdf': { name: 'Protect PDF', desc: 'Add a password to your PDF file.', accept: '.pdf', needsPassword: true },
-    'unlock-pdf': { name: 'Unlock PDF', desc: 'Remove password security from your PDF.', accept: '.pdf', needsPassword: true },
-    'watermark-pdf': { name: 'Watermark PDF', desc: 'Stamp an image or text over your PDF.', accept: '.pdf', needsText: true },
-    'sign-pdf': { name: 'Sign PDF', desc: 'Add a signature to your PDF document.', accept: '.pdf' },
+// Helper to determine tool requirements based on category or name
+const getToolConfig = (tool) => {
+    if (!tool) return null;
+    
+    // Default config
+    let config = { ...tool, accept: '*/*', multiple: false, needsPassword: false, needsText: false, noFile: false };
+
+    // File accept rules
+    if (tool.category === 'Image Tools') config.accept = 'image/*';
+    if (tool.category === 'Pdf Tools') config.accept = '.pdf';
+    if (['word-to-pdf'].includes(tool.slug)) config.accept = '.doc,.docx';
+    if (['csv-to-json', 'csv-to-xml'].includes(tool.slug)) config.accept = '.csv';
+    if (['json-to-xml'].includes(tool.slug)) config.accept = '.json';
+    if (['xml-to-json', 'xml-to-csv'].includes(tool.slug)) config.accept = '.xml';
+    if (['jpg-to-pdf', 'png-to-pdf'].includes(tool.slug)) config.accept = 'image/*';
+    
+    // Multiple files rules
+    if (['merge-pdf', 'jpg-to-pdf', 'png-to-pdf'].includes(tool.slug)) {
+        config.multiple = true;
+    }
+
+    // Special fields
+    if (tool.slug === 'protect-pdf' || tool.slug === 'unlock-pdf') config.needsPassword = true;
+    if (tool.slug === 'watermark-pdf') config.needsText = true;
+    
+    // No-file utilities
+    if (tool.slug === 'qr-code-generator') {
+        config.noFile = true;
+        config.needsText = true; // Text for QR content
+    }
+    if (['lorem-ipsum-generator', 'epoch-converter'].includes(tool.slug)) {
+        config.noFile = true;
+    }
+
+    return config;
 };
 
 export default function ToolServicePage({ params }) {
     // Unwind params Promise for Next.js 15
     const resolvedParams = use(params);
     const { slug } = resolvedParams;
-    const toolInfo = toolDetails[slug] || { name: 'Tool Not Found', desc: 'This tool is not configured.', accept: '*/*' };
+    const baseTool = toolsList.find(t => t.slug === slug);
+    const toolInfo = getToolConfig(baseTool);
 
     const [files, setFiles] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -53,7 +76,7 @@ export default function ToolServicePage({ params }) {
     };
 
     const handleProcess = async () => {
-        if (files.length === 0) return;
+        if (!toolInfo.noFile && files.length === 0) return;
         setIsProcessing(true);
         setErrorMsg('');
         setIsComplete(false);
@@ -78,9 +101,14 @@ export default function ToolServicePage({ params }) {
                 
                 // Get filename from header if available
                 const contentDisposition = res.headers.get('Content-Disposition');
-                let filename = `${slug}-output.pdf`;
+                let filename = `${slug}-output`;
                 if (contentDisposition && contentDisposition.includes('filename=')) {
                     filename = contentDisposition.split('filename=')[1].replace(/"/g, '');
+                } else {
+                    // Fallback extensions based on category
+                    if (toolInfo.category === 'Pdf Tools') filename += '.pdf';
+                    else if (toolInfo.category === 'Image Tools') filename += '.png';
+                    else filename += '.txt';
                 }
 
                 setDownloadUrl({ url, filename });
@@ -97,8 +125,19 @@ export default function ToolServicePage({ params }) {
         }
     };
 
-    if (!toolDetails[slug]) {
-        return <div className="min-h-screen flex items-center justify-center p-6 text-2xl font-bold bg-white text-gray-900">Tool not found.</div>;
+    if (!toolInfo) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50 text-gray-900 pb-20">
+                <div className="bg-white p-12 rounded-3xl shadow-xl border border-gray-100 max-w-lg text-center">
+                    <Settings className="w-16 h-16 text-orange-500 mx-auto mb-6 opacity-50" />
+                    <h2 className="text-3xl font-black mb-4">Tool Not Found</h2>
+                    <p className="text-gray-500 mb-8 font-medium">We couldn't find the tool you're looking for. It may have been removed or renamed.</p>
+                    <Link href="/tools" className="inline-flex bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-8 rounded-full transition shadow-[0_8px_20px_rgb(248,158,53,0.3)]">
+                        Browse All Tools
+                    </Link>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -131,9 +170,17 @@ export default function ToolServicePage({ params }) {
                                     className="flex flex-col items-center"
                                 >
                                     
-                                    {files.length === 0 ? (
+                                    {toolInfo.noFile ? (
+                                        <div className="w-full border-4 border border-gray-100 rounded-3xl p-12 text-center transition-colors bg-orange-50/30 mb-8">
+                                            <div className="w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center mx-auto mb-6 text-orange-500">
+                                                <Settings className="w-10 h-10" />
+                                            </div>
+                                            <h3 className="text-2xl font-black text-gray-900 mb-2">No Files Required</h3>
+                                            <p className="text-gray-500 font-medium">This tool generates content directly from parameters.</p>
+                                        </div>
+                                    ) : files.length === 0 ? (
                                         <div 
-                                            className="w-full border-4 border-dashed border-gray-200 hover:border-orange-500 rounded-3xl p-16 text-center transition-colors cursor-pointer bg-gray-50 hover:bg-orange-50/30"
+                                            className="w-full border-4 border-dashed border-gray-200 hover:border-orange-500 rounded-3xl p-16 text-center transition-colors cursor-pointer bg-gray-50 hover:bg-orange-50/30 mb-8"
                                             onClick={() => fileInputRef.current?.click()}
                                         >
                                             <div className="w-24 h-24 bg-white rounded-full shadow-lg flex items-center justify-center mx-auto mb-6 text-orange-500">
@@ -174,62 +221,64 @@ export default function ToolServicePage({ params }) {
                                                     + Add More Files
                                                 </button>
                                             )}
-
-                                            {toolInfo.needsPassword && (
-                                                <div className="mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                                        <Settings className="w-4 h-4" /> Password
-                                                    </label>
-                                                    <input 
-                                                        type="password" 
-                                                        value={password}
-                                                        onChange={(e) => setPassword(e.target.value)}
-                                                        placeholder="Enter document password"
-                                                        className="w-full bg-white border border-gray-300 rounded-xl p-4 text-gray-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition"
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {toolInfo.needsText && (
-                                                <div className="mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                                        <Type className="w-4 h-4" /> Watermark Text
-                                                    </label>
-                                                    <input 
-                                                        type="text" 
-                                                        value={customText}
-                                                        onChange={(e) => setCustomText(e.target.value)}
-                                                        placeholder="CONFIDENTIAL"
-                                                        className="w-full bg-white border border-gray-300 rounded-xl p-4 text-gray-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition"
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {errorMsg && (
-                                                <div className="mb-6 p-4 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 flex items-start gap-3">
-                                                    <span className="mt-0.5 animate-pulse">!</span>
-                                                    {errorMsg}
-                                                </div>
-                                            )}
-
-                                            <button 
-                                                onClick={handleProcess}
-                                                disabled={isProcessing}
-                                                className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-xl font-black py-5 rounded-2xl transition shadow-[0_8px_30px_rgb(248,158,53,0.3)] flex items-center justify-center gap-3"
-                                            >
-                                                {isProcessing ? (
-                                                    <>
-                                                        <RefreshCw className="w-6 h-6 animate-spin" />
-                                                        Processing... 
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        {toolInfo.name.includes('to') ? 'Convert Now' : 'Process Now'}
-                                                    </>
-                                                )}
-                                            </button>
                                         </div>
                                     )}
+
+                                    <div className="w-full">
+                                        {toolInfo.needsPassword && (
+                                            <div className="mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-200 w-full">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <Settings className="w-4 h-4" /> Password
+                                                </label>
+                                                <input 
+                                                    type="password" 
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    placeholder="Enter document password"
+                                                    className="w-full bg-white border border-gray-300 rounded-xl p-4 text-gray-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {toolInfo.needsText && (
+                                            <div className="mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-200 w-full">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <Type className="w-4 h-4" /> {toolInfo.slug === 'qr-code-generator' ? 'QR Code Content (URL or Text)' : 'Custom Text / Watermark'}
+                                                </label>
+                                                <input 
+                                                    type="text" 
+                                                    value={customText}
+                                                    onChange={(e) => setCustomText(e.target.value)}
+                                                    placeholder={toolInfo.slug === 'qr-code-generator' ? "https://example.com" : "CONFIDENTIAL"}
+                                                    className="w-full bg-white border border-gray-300 rounded-xl p-4 text-gray-900 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {errorMsg && (
+                                        <div className="mb-6 w-full p-4 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 flex items-start gap-3">
+                                            <span className="mt-0.5 animate-pulse">!</span>
+                                            {errorMsg}
+                                        </div>
+                                    )}
+
+                                    <button 
+                                        onClick={handleProcess}
+                                        disabled={isProcessing || (!toolInfo.noFile && files.length === 0)}
+                                        className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-70 disabled:cursor-not-allowed text-white text-xl font-black py-5 rounded-2xl transition shadow-[0_8px_30px_rgb(248,158,53,0.3)] flex items-center justify-center gap-3"
+                                    >
+                                        {isProcessing ? (
+                                            <>
+                                                <RefreshCw className="w-6 h-6 animate-spin" />
+                                                Processing... 
+                                            </>
+                                        ) : (
+                                            <>
+                                                {toolInfo.name.includes('to') ? 'Convert Now' : 'Process Now'}
+                                            </>
+                                        )}
+                                    </button>
 
                                 </motion.div>
                             ) : (
@@ -272,14 +321,16 @@ export default function ToolServicePage({ params }) {
                     </div>
                 </div>
 
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileChange}
-                    accept={toolInfo.accept} 
-                    multiple={toolInfo.multiple}
-                    className="hidden" 
-                />
+                {!toolInfo?.noFile && (
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange}
+                        accept={toolInfo?.accept} 
+                        multiple={toolInfo?.multiple}
+                        className="hidden" 
+                    />
+                )}
             </div>
         </div>
     );

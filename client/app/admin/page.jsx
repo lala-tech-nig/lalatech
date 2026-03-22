@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2 } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2, Box } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -110,11 +110,37 @@ export default function AdminDashboard() {
     const [adminReplies, setAdminReplies] = useState({});
     const [activeFeedComments, setActiveFeedComments] = useState(null);
 
+    // 3D Posts
+    const [threeDPosts, setThreeDPosts] = useState([]);
+    const [newThreeDPost, setNewThreeDPost] = useState({ title: '', story: '', sketchfabUrl: '', thumbnail: '' });
+    const [threeDThumbPreview, setThreeDThumbPreview] = useState('');
+
     // Upload Previews
     const [productImagePreview, setProductImagePreview] = useState('');
     const [courseThumbPreview, setCourseThumbPreview] = useState('');
     const [feedImagePreview, setFeedImagePreview] = useState('');
     const [promoMediaPreview, setPromoMediaPreview] = useState('');
+
+    useEffect(() => {
+        if (newThreeDPost.sketchfabUrl && newThreeDPost.sketchfabUrl.includes('sketchfab.com')) {
+            const fetchThumb = async () => {
+                try {
+                    const res = await fetch(`https://sketchfab.com/oembed?url=${newThreeDPost.sketchfabUrl}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.thumbnail_url) {
+                            setThreeDThumbPreview(data.thumbnail_url);
+                            setNewThreeDPost(prev => ({ ...prev, thumbnail: data.thumbnail_url }));
+                        }
+                    }
+                } catch (err) {
+                    console.error('Could not auto-fetch sketchfab thumbnail', err);
+                }
+            };
+            const timer = setTimeout(fetchThumb, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [newThreeDPost.sketchfabUrl]);
 
     useEffect(() => {
         fetchData();
@@ -162,6 +188,9 @@ export default function AdminDashboard() {
             } else if (activeTab === 'news') {
                 const res = await fetch(`${API_BASE_URL}/news/admin/all`);
                 if (res.ok) setNewsArticles(await res.json());
+            } else if (activeTab === 'threed') {
+                const res = await fetch(`${API_BASE_URL}/3d`);
+                if (res.ok) setThreeDPosts(await res.json());
             }
         } catch (err) {
             toast.error('Failed to load data');
@@ -276,6 +305,22 @@ export default function AdminDashboard() {
     const deleteArticle = async (id) => {
         if (!confirm('Delete this article?')) return;
         try { await fetch(`${API_BASE_URL}/news/${id}`, { method: 'DELETE' }); toast.success('Article deleted'); setNewsArticles(prev => prev.filter(a => a._id !== id)); } catch (err) { toast.error('Error deleting article'); }
+    };
+
+    // 3D Posts
+    const deleteThreeDPost = async (id) => {
+        if (!confirm('Delete this 3D post?')) return;
+        try { await fetch(`${API_BASE_URL}/3d/${id}`, { method: 'DELETE' }); toast.success('3D Post deleted'); fetchData(); } catch (err) { toast.error('Error deleting 3D post'); }
+    };
+    const addThreeDPost = async (e) => {
+        e.preventDefault();
+        try { 
+            await fetch(`${API_BASE_URL}/3d`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newThreeDPost) }); 
+            toast.success('3D Post published'); 
+            setNewThreeDPost({ title: '', story: '', sketchfabUrl: '', thumbnail: '' }); 
+            setThreeDThumbPreview(''); 
+            fetchData(); 
+        } catch (err) { toast.error('Error publishing 3D post'); }
     };
 
     // Feed comment admin reply
@@ -485,6 +530,7 @@ export default function AdminDashboard() {
                                         { id: 'courses', icon: Youtube, label: 'Course Manager' },
                                         { id: 'feed', icon: Rss, label: 'Feed Manager' },
                                         { id: 'news', icon: TrendingUp, label: 'News Manager' },
+                                        { id: 'threed', icon: Box, label: '3D Models' },
                                         { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
                                         { id: 'careers', icon: Users, label: 'Careers' },
                                         { id: 'messages', icon: MessageSquare, label: 'Messages' },
@@ -678,6 +724,83 @@ export default function AdminDashboard() {
                                     <div className="text-center py-20">
                                         <Activity className="w-12 h-12 text-slate-200 mx-auto mb-4 animate-pulse" />
                                         <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Awaiting visitor traffic...</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'threed' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Manage 3D Models</h1>
+                            <p className="text-slate-500 font-medium mb-6 md:mb-10">Publish interactive Sketchfab 3D models with stories.</p>
+
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm mb-10 transition hover:shadow-md">
+                                <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                    <span className="bg-[#f89e35]/10 p-2 rounded-lg text-[#f89e35]"><Plus className="w-5 h-5" /></span>
+                                    Add New 3D Post
+                                </h3>
+                                <form onSubmit={addThreeDPost} className="space-y-6">
+                                    <input type="text" placeholder="Title" required value={newThreeDPost.title} onChange={e => setNewThreeDPost({ ...newThreeDPost, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
+                                    <input type="url" placeholder="Sketchfab URL (e.g. https://sketchfab.com/3d-models/...)" required value={newThreeDPost.sketchfabUrl} onChange={e => setNewThreeDPost({ ...newThreeDPost, sketchfabUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
+                                    
+                                    <select value={newThreeDPost.category || 'General'} onChange={e => setNewThreeDPost({ ...newThreeDPost, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition">
+                                        <option value="General">General</option>
+                                        <option value="Programming">Programming</option>
+                                        <option value="Design">Design</option>
+                                        <option value="Business">Business</option>
+                                        <option value="Marketing">Marketing</option>
+                                        <option value="Data Science">Data Science</option>
+                                        <option value="DevOps">DevOps</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    
+                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-2">
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Thumbnail Upload</label>
+                                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => handleFileUpload(e, (url) => setNewThreeDPost({ ...newThreeDPost, thumbnail: url }), setThreeDThumbPreview)}
+                                                className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#f89e35]/10 file:text-[#f89e35] hover:file:bg-[#f89e35]/20"
+                                            />
+                                            {uploading && <Loader2 className="w-5 h-5 animate-spin text-[#f89e35]" />}
+                                            {threeDThumbPreview && <img src={threeDThumbPreview} alt="Preview" className="h-12 w-auto object-cover rounded shadow-sm border border-slate-200" />}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white border text-black border-slate-200 rounded-xl overflow-hidden pb-12 w-full max-w-full">
+                                        <ReactQuill theme="snow" value={newThreeDPost.story} onChange={(val) => setNewThreeDPost({ ...newThreeDPost, story: val })} className="h-64 mb-4" placeholder="Write the full narrative for this 3D model..." />
+                                    </div>
+
+                                    <div className="flex justify-end pt-4 border-t border-slate-100">
+                                        <button type="submit" disabled={uploading} className="w-full md:w-auto bg-[#110f0e] hover:bg-slate-800 disabled:opacity-50 text-white font-bold px-8 py-3 rounded-xl transition shadow-md">Publish 3D Model</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                                {threeDPosts.map(p => (
+                                    <div key={p._id} className="bg-white border border-slate-200 rounded-3xl overflow-hidden relative group shadow-sm hover:shadow-xl hover:border-[#f89e35]/30 transition-all duration-300">
+                                        <div className="h-48 bg-slate-100 relative">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            {p.thumbnail ? <img src={p.thumbnail} alt={p.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-400">NO THUMBNAIL</div>}
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <Box className="w-10 h-10 text-white" />
+                                            </div>
+                                        </div>
+                                        <div className="p-6">
+                                            <h4 className="font-black text-slate-900 text-lg mb-2 truncate">{p.title}</h4>
+                                            <p className="text-slate-500 font-medium text-sm mb-4">Views: {p.views}</p>
+                                        </div>
+                                        <button onClick={() => deleteThreeDPost(p._id)} className="absolute top-4 right-4 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 p-2.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg transform translate-y-2 group-hover:translate-y-0">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {threeDPosts.length === 0 && !loading && (
+                                    <div className="col-span-full text-center py-12 bg-white rounded-3xl border border-slate-200 border-dashed">
+                                        <p className="text-slate-500 font-medium">No 3D models published yet.</p>
                                     </div>
                                 )}
                             </div>

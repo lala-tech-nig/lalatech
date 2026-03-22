@@ -6,213 +6,252 @@ const JSZip = require('jszip');
 const mammoth = require('mammoth');
 const { Document, Packer, Paragraph, TextRun } = require('docx');
 const pdfParse = require('pdf-parse');
-const path = require('path');
-const fs = require('fs');
+const sharp = require('sharp');
+const csv = require('csvtojson');
+const { parse: json2csv } = require('json2csv');
+const QRCode = require('qrcode');
+const xmlJs = require('xml-js');
 
-// Use memory storage to process files directly
-const upload = multer({ storage: multer.memoryStorage() });
+// Use memory storage
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 router.post('/process', upload.array('files', 20), async (req, res) => {
     try {
         const tool = req.body.tool;
         const files = req.files;
 
-        if (!files || files.length === 0) {
+        if (!tool) return res.status(400).json({ message: 'Tool undefined.' });
+        if ((!files || files.length === 0) && !['lorem-ipsum-generator', 'epoch-converter'].includes(tool)) {
             return res.status(400).json({ message: 'No files provided for processing.' });
         }
 
         let outputBuffer = null;
-        let outputFileName = 'output.pdf';
-        let contentType = 'application/pdf';
+        let outputFileName = 'output';
+        let contentType = 'application/octet-stream';
 
-        // 1. Merge PDF
-        if (tool === 'merge-pdf') {
-            const mergedPdf = await PDFDocument.create();
-            for (const file of files) {
-                const srcDoc = await PDFDocument.load(file.buffer);
-                const copiedPages = await mergedPdf.copyPages(srcDoc, srcDoc.getPageIndices());
-                copiedPages.forEach((page) => mergedPdf.addPage(page));
-            }
-            outputBuffer = await mergedPdf.save();
-            outputFileName = 'merged-document.pdf';
-        } 
+        // ------------------------------------------------------------------ //
+        // 1. IMAGE FORMAT CONVERSIONS                                        //
+        // ------------------------------------------------------------------ //
+        const imageConversions = ['png-to-jpg', 'jpg-to-png', 'webp-to-png', 'png-to-webp', 'jpg-to-webp', 'webp-to-jpg', 'gif-to-png', 'gif-to-jpg'];
+        if (imageConversions.includes(tool)) {
+            const outFormat = tool.split('-to-')[1];
+            outputBuffer = await sharp(files[0].buffer).toFormat(outFormat).toBuffer();
+            outputFileName = `converted-image.${outFormat}`;
+            contentType = `image/${outFormat}`;
+        }
         
-        // 2. Watermark PDF
-        else if (tool === 'watermark-pdf') {
-            const textToStamp = req.body.text || 'LALA TECH';
-            const srcDoc = await PDFDocument.load(files[0].buffer);
-            const pages = srcDoc.getPages();
-            for (const page of pages) {
-                const { width, height } = page.getSize();
-                page.drawText(textToStamp, {
-                    x: width / 2 - 100,
-                    y: height / 2,
-                    size: 50,
-                    color: rgb(0.9, 0.1, 0.1),
-                    opacity: 0.3,
-                });
+        // ------------------------------------------------------------------ //
+        // 2. IMAGE MANIPULATIONS                                             //
+        // ------------------------------------------------------------------ //
+        else if (['compress-image-size', 'resize-image-dimensions', 'crop-image', 'flip-image', 'black-white', 'make-round-image'].includes(tool)) {
+            let img = sharp(files[0].buffer);
+            const metadata = await img.metadata();
+            
+            if (tool === 'compress-image-size') {
+                img = img.jpeg({ quality: 50 });
+            } else if (tool === 'resize-image-dimensions') {
+                // Resize to 80% if no params passed
+                img = img.resize(Math.round(metadata.width * 0.8));
+            } else if (tool === 'crop-image') {
+                // Crop central 80%
+                img = img.extract({ width: Math.round(metadata.width * 0.8), height: Math.round(metadata.height * 0.8), left: Math.round(metadata.width * 0.1), top: Math.round(metadata.height * 0.1) });
+            } else if (tool === 'flip-image') {
+                img = img.flop();
+            } else if (tool === 'black-white') {
+                img = img.grayscale();
+            } else if (tool === 'make-round-image') {
+                const r = Math.min(metadata.width, metadata.height) / 2;
+                const circleSvg = Buffer.from(`<svg><circle cx="${r}" cy="${r}" r="${r}" /></svg>`);
+                img = img.resize(r * 2, r * 2).composite([{ input: circleSvg, blend: 'dest-in' }]).png();
             }
-            outputBuffer = await srcDoc.save();
-            outputFileName = 'watermarked-document.pdf';
+
+            outputBuffer = await img.toBuffer();
+            outputFileName = `manipulated-image.${tool === 'make-round-image' ? 'png' : 'jpg'}`;
+            contentType = `image/${tool === 'make-round-image' ? 'png' : 'jpeg'}`;
         }
 
-        // 3. Protect PDF
-        else if (tool === 'protect-pdf') {
-            const password = req.body.password || '1234';
-            const srcDoc = await PDFDocument.load(files[0].buffer);
-            outputBuffer = await srcDoc.save({ userPassword: password, ownerPassword: password });
-            outputFileName = 'protected-document.pdf';
-        }
+        // ------------------------------------------------------------------ //
+        // 3. DATA / TEXT CONVERTERS                                          //
+        // ------------------------------------------------------------------ //
+        else if (['csv-to-json', 'json-to-xml', 'xml-to-json', 'csv-to-xml', 'xml-to-csv'].includes(tool)) {
+            const dataStr = files[0].buffer.toString('utf8');
+            let outputStr = '';
 
-        // 4. Unlock PDF
-        else if (tool === 'unlock-pdf') {
-            const password = req.body.password || '';
-            let srcDoc;
             try {
-                srcDoc = await PDFDocument.load(files[0].buffer, { password });
-            } catch (err) {
-                return res.status(400).json({ message: 'Incorrect password or PDF error.' });
-            }
-            outputBuffer = await srcDoc.save();
-            outputFileName = 'unlocked-document.pdf';
-        }
-
-        // 5. JPG/PNG to PDF
-        else if (tool === 'jpg-to-pdf') {
-            const pdfDoc = await PDFDocument.create();
-            for (const file of files) {
-                let image;
-                if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg') {
-                    image = await pdfDoc.embedJpg(file.buffer);
-                } else if (file.mimetype === 'image/png') {
-                    image = await pdfDoc.embedPng(file.buffer);
-                } else {
-                    continue;
+                if (tool === 'csv-to-json') {
+                    const jsonObj = await csv().fromString(dataStr);
+                    outputStr = JSON.stringify(jsonObj, null, 2);
+                    outputFileName = 'data.json';
+                    contentType = 'application/json';
+                } else if (tool === 'json-to-xml') {
+                    outputStr = xmlJs.json2xml(dataStr, { compact: true, spaces: 4 });
+                    outputFileName = 'data.xml';
+                    contentType = 'application/xml';
+                } else if (tool === 'xml-to-json') {
+                    outputStr = xmlJs.xml2json(dataStr, { compact: true, spaces: 4 });
+                    outputFileName = 'data.json';
+                    contentType = 'application/json';
+                } else if (tool === 'csv-to-xml') {
+                    const jsonObj = await csv().fromString(dataStr);
+                    outputStr = xmlJs.json2xml(JSON.stringify({ root: { item: jsonObj } }), { compact: true, spaces: 4 });
+                    outputFileName = 'data.xml';
+                    contentType = 'application/xml';
+                } else if (tool === 'xml-to-csv') {
+                    const jsonObj = JSON.parse(xmlJs.xml2json(dataStr, { compact: true }));
+                    // simple heuristic to find array
+                    let arr = jsonObj[Object.keys(jsonObj)[0]];
+                    if (!Array.isArray(arr)) arr = arr[Object.keys(arr)[0]];
+                    outputStr = json2csv(arr);
+                    outputFileName = 'data.csv';
+                    contentType = 'text/csv';
                 }
-                const page = pdfDoc.addPage([image.width, image.height]);
-                page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+                outputBuffer = Buffer.from(outputStr);
+            } catch (e) {
+                return res.status(400).json({ message: 'Invalid file format. Please check the content.' });
             }
-            outputBuffer = await pdfDoc.save();
-            outputFileName = 'images-to-pdf.pdf';
         }
 
-        // 6. Split PDF
-        else if (tool === 'split-pdf') {
-            const srcDoc = await PDFDocument.load(files[0].buffer);
-            const pageCount = srcDoc.getPageCount();
-            const zip = new JSZip();
-            
-            for (let i = 0; i < pageCount; i++) {
-                const newDoc = await PDFDocument.create();
-                const [page] = await newDoc.copyPages(srcDoc, [i]);
-                newDoc.addPage(page);
-                const pdfBytes = await newDoc.save();
-                zip.file(`page-${i + 1}.pdf`, pdfBytes);
+        // ------------------------------------------------------------------ //
+        // 4. TEXT & UTILITIES                                                //
+        // ------------------------------------------------------------------ //
+        else if (['lorem-ipsum-generator', 'word-counter', 'epoch-converter', 'qr-code-generator'].includes(tool)) {
+            if (tool === 'lorem-ipsum-generator') {
+                const text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.";
+                outputBuffer = Buffer.from(text);
+                outputFileName = 'lorem-ipsum.txt';
+                contentType = 'text/plain';
+            } else if (tool === 'word-counter') {
+                const text = files[0].buffer.toString('utf8');
+                const count = text.trim().split(/\s+/).length;
+                outputBuffer = Buffer.from(`Your text contains ${count} words.`);
+                outputFileName = 'word-count.txt';
+                contentType = 'text/plain';
+            } else if (tool === 'epoch-converter') {
+                const now = new Date();
+                const text = `Current Epoch (Seconds): ${Math.floor(now.getTime() / 1000)}\nCurrent Epoch (Milliseconds): ${now.getTime()}\nHuman Readable: ${now.toUTCString()}`;
+                outputBuffer = Buffer.from(text);
+                outputFileName = 'epoch-info.txt';
+                contentType = 'text/plain';
+            } else if (tool === 'qr-code-generator') {
+                const text = req.body.text || 'https://lalatech.ng';
+                outputBuffer = await QRCode.toBuffer(text);
+                outputFileName = 'qrcode.png';
+                contentType = 'image/png';
             }
-            
-            outputBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-            outputFileName = 'split-pages.zip';
-            contentType = 'application/zip';
         }
 
-        // 7. Compress PDF (Basic optimization)
-        else if (tool === 'compress-pdf') {
-            const srcDoc = await PDFDocument.load(files[0].buffer);
-            outputBuffer = await srcDoc.save({ useObjectStreams: true });
-            outputFileName = 'compressed-document.pdf';
-        }
-
-        // 8. Sign PDF (Adds a signature image on the last page)
-        else if (tool === 'sign-pdf') {
-            // If multiple files, assume the first is PDF and the second is the signature image
-            if (files.length < 2) return res.status(400).json({ message: 'Please upload both a PDF and a signature image.' });
-            
-            const srcDoc = await PDFDocument.load(files[0].buffer);
-            const signatureBuffer = files[1].buffer;
-            
-            let signature;
-            if (files[1].mimetype.includes('png')) signature = await srcDoc.embedPng(signatureBuffer);
-            else signature = await srcDoc.embedJpg(signatureBuffer);
-            
-            const lastPage = srcDoc.getPages()[srcDoc.getPageCount() - 1];
-            const { width, height } = lastPage.getSize();
-            
-            lastPage.drawImage(signature, {
-                x: width - 150,
-                y: 50,
-                width: 100,
-                height: 50,
-            });
-            
-            outputBuffer = await srcDoc.save();
-            outputFileName = 'signed-document.pdf';
-        }
-
-        // 9. PDF to Word (Text Extraction only)
-        else if (tool === 'pdf-to-word') {
-            const data = await pdfParse(files[0].buffer);
-            const textLines = data.text.split('\n');
-            
-            const doc = new Document({
-                sections: [{
-                    children: textLines.map(line => new Paragraph({
-                        children: [new TextRun(line)],
-                    })),
-                }],
-            });
-            
-            outputBuffer = await Packer.toBuffer(doc);
-            outputFileName = 'converted-document.docx';
-            contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        }
-
-        // 10. Word to PDF (Very basic text-only conversion)
-        else if (tool === 'word-to-pdf') {
-            const result = await mammoth.extractRawText({ buffer: files[0].buffer });
-            const text = result.value;
-            
-            const pdfDoc = await PDFDocument.create();
-            const page = pdfDoc.addPage();
-            const { width, height } = page.getSize();
-            
-            page.drawText('Note: This is a basic text-only conversion from Word.', { x: 50, y: height - 50, size: 10 });
-            page.drawText(text.substring(0, 1000), { // Limited to first 1000 chars for demo
-                x: 50,
-                y: height - 100,
-                size: 12,
-                maxWidth: width - 100,
-            });
-            
-            outputBuffer = await pdfDoc.save();
-            outputFileName = 'converted-from-word.pdf';
-        }
-
-        // 11. Extract Images
-        else if (tool === 'extract-images') {
-            const zip = new JSZip();
-            const srcDoc = await PDFDocument.load(files[0].buffer);
-            const enumerateObjects = srcDoc.context.enumerateIndirectObjects();
-            
-            let imgCount = 0;
-            for (const [ref, obj] of enumerateObjects) {
-                if (obj.get && obj.get(PDFDocument.create().context.obj('Subtype'))?.toString() === '/Image') {
-                    const contents = obj.get(PDFDocument.create().context.obj('Contents'));
-                    // Simplifying: This is a complex task to do manually without a decoder. 
-                    // For now, we stub this with a message or basic extraction if possible.
-                    imgCount++;
+        // ------------------------------------------------------------------ //
+        // 5. PDF FORMAT CONVERSIONS                                          //
+        // ------------------------------------------------------------------ //
+        else if (['pdf-to-jpg', 'pdf-to-png', 'jpg-to-pdf', 'png-to-pdf', 'pdf-to-word', 'word-to-pdf', 'extract-images-pdf'].includes(tool)) {
+            if (tool === 'jpg-to-pdf' || tool === 'png-to-pdf') {
+                const pdfDoc = await PDFDocument.create();
+                for (const file of files) {
+                    let image;
+                    if (tool === 'jpg-to-pdf') image = await pdfDoc.embedJpg(file.buffer);
+                    else image = await pdfDoc.embedPng(file.buffer);
+                    const page = pdfDoc.addPage([image.width, image.height]);
+                    page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
                 }
+                outputBuffer = await pdfDoc.save();
+                outputFileName = 'images.pdf';
+                contentType = 'application/pdf';
+            } else if (tool === 'pdf-to-word') {
+                const data = await pdfParse(files[0].buffer);
+                const doc = new Document({
+                    sections: [{ children: data.text.split('\n').map(l => new Paragraph({ children: [new TextRun(l)] })) }]
+                });
+                outputBuffer = await Packer.toBuffer(doc);
+                outputFileName = 'converted.docx';
+                contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            } else if (tool === 'word-to-pdf') {
+                const result = await mammoth.extractRawText({ buffer: files[0].buffer });
+                const pdfDoc = await PDFDocument.create();
+                const page = pdfDoc.addPage();
+                page.drawText(result.value.substring(0, 3000), { x: 50, y: 800, size: 12 });
+                outputBuffer = await pdfDoc.save();
+                outputFileName = 'converted.pdf';
+                contentType = 'application/pdf';
+            } else if (tool === 'pdf-to-jpg' || tool === 'pdf-to-png') {
+                // Without extensive canvas/ghostscript integrations, converting PDF to images in plain JS is very hard.
+                // We will send a placeholder text saying "Conversion requires GhostScript" 
+                outputBuffer = Buffer.from('To convert PDF directly to image without external API, a server binary like GhostScript is required.');
+                outputFileName = 'info.txt';
+                contentType = 'text/plain';
+            } else if (tool === 'extract-images-pdf') {
+                outputBuffer = Buffer.from('Extracting images from PDF reliably requires external API or GhostScript binaries.');
+                outputFileName = 'info.txt';
+                contentType = 'text/plain';
             }
-
-            if (imgCount === 0) return res.status(400).json({ message: 'No images found in this PDF.' });
-            
-            // Dummy implementation for demo stability
-            zip.file('info.txt', `Found ${imgCount} image objects in the PDF core. Manual extraction requires pixel decoding.`);
-            outputBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-            outputFileName = 'extracted-images.zip';
-            contentType = 'application/zip';
         }
 
-        else {
+        // ------------------------------------------------------------------ //
+        // 6. NATIVE PDF MANIPULATIONS                                        //
+        // ------------------------------------------------------------------ //
+        else if (['merge-pdf', 'split-pdf', 'compress-pdf', 'protect-pdf', 'unlock-pdf', 'watermark-pdf', 'rotate-pdf', 'rearrange-pdf', 'pdf-page-deleter', 'add-numbers-to-pdf'].includes(tool)) {
+            let outputFileName = `${tool}.pdf`;
+            
+            if (tool === 'merge-pdf') {
+                const mergedPdf = await PDFDocument.create();
+                for (const file of files) {
+                    const srcDoc = await PDFDocument.load(file.buffer);
+                    const copiedPages = await mergedPdf.copyPages(srcDoc, srcDoc.getPageIndices());
+                    copiedPages.forEach(p => mergedPdf.addPage(p));
+                }
+                outputBuffer = await mergedPdf.save();
+            } else if (tool === 'split-pdf') {
+                const srcDoc = await PDFDocument.load(files[0].buffer);
+                const zip = new JSZip();
+                for (let i = 0; i < srcDoc.getPageCount(); i++) {
+                    const newDoc = await PDFDocument.create();
+                    const [page] = await newDoc.copyPages(srcDoc, [i]);
+                    newDoc.addPage(page);
+                    zip.file(`page-${i + 1}.pdf`, await newDoc.save());
+                }
+                outputBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+                outputFileName = 'split-pages.zip';
+                contentType = 'application/zip';
+            } else if (tool === 'watermark-pdf') {
+                const text = req.body.text || 'LALA TECH';
+                const srcDoc = await PDFDocument.load(files[0].buffer);
+                srcDoc.getPages().forEach(page => {
+                    const { width, height } = page.getSize();
+                    page.drawText(text, { x: width / 3, y: height / 2, size: 40, color: rgb(0.8, 0.1, 0.1), opacity: 0.3 });
+                });
+                outputBuffer = await srcDoc.save();
+            } else if (tool === 'protect-pdf') {
+                const password = req.body.password || '1234';
+                const srcDoc = await PDFDocument.load(files[0].buffer);
+                outputBuffer = await srcDoc.save({ userPassword: password, ownerPassword: password });
+            } else if (tool === 'unlock-pdf') {
+                const password = req.body.password || '';
+                try {
+                    const srcDoc = await PDFDocument.load(files[0].buffer, { password });
+                    outputBuffer = await srcDoc.save();
+                } catch (err) {
+                    return res.status(400).json({ message: 'Incorrect password.' });
+                }
+            } else if (tool === 'rotate-pdf') {
+                const srcDoc = await PDFDocument.load(files[0].buffer);
+                srcDoc.getPages().forEach(p => p.setRotation(p.getRotation().angle + 90));
+                outputBuffer = await srcDoc.save();
+            } else if (tool === 'pdf-page-deleter') {
+                const srcDoc = await PDFDocument.load(files[0].buffer);
+                if (srcDoc.getPageCount() > 1) srcDoc.removePage(srcDoc.getPageCount() - 1); // remove last page
+                outputBuffer = await srcDoc.save();
+            } else if (tool === 'add-numbers-to-pdf') {
+                const srcDoc = await PDFDocument.load(files[0].buffer);
+                srcDoc.getPages().forEach((page, i) => {
+                    page.drawText(`${i + 1}`, { x: page.getSize().width / 2, y: 30, size: 12, color: rgb(0,0,0) });
+                });
+                outputBuffer = await srcDoc.save();
+            } else if (tool === 'compress-pdf' || tool === 'rearrange-pdf') {
+                const srcDoc = await PDFDocument.load(files[0].buffer);
+                outputBuffer = await srcDoc.save({ useObjectStreams: true }); // Basic compression / no-op for rearrange
+            }
+            
+            if (tool !== 'split-pdf') contentType = 'application/pdf';
+        } else {
             return res.status(400).json({ message: 'Unknown tool requested.' });
         }
 
