@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, Share2, MessageCircle, X, Search } from 'lucide-react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -56,7 +57,7 @@ export default function ShopPage() {
 
     // --- Share ---
     const handleShare = async (product) => {
-        const url = `${window.location.origin}/shop`;
+        const url = `${window.location.origin}/shop/${product.slug}`;
         const caption = `🛍️ Found this awesome product on Lala Tech website and I'm sure it'll be of your interest!\n\n*${product.title}*\n💰 Price: ₦${Number(product.price).toLocaleString()}\n\n${product.description || ''}\n\n🔗 Check it out: ${url}`;
 
         if (navigator.share) {
@@ -292,51 +293,52 @@ export default function ShopPage() {
                 ) : (
                     <div className="product-grid">
                         {filtered.map((product, idx) => (
-                            <motion.div
-                                key={product._id}
-                                className="product-card"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.05 }}
-                            >
-                                {/* Image */}
-                                <div className="product-img-wrap">
-                                    {product.image ? (
-                                        <img
-                                            src={product.image}
-                                            alt={product.title}
-                                            onError={(e) => {
-                                                e.target.style.display = 'none';
-                                                e.target.parentNode.style.background = '#f1f5f9';
-                                            }}
-                                        />
-                                    ) : (
-                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <ShoppingBag size={48} color="#cbd5e1" />
+                            <Link href={`/shop/${product.slug}`} key={product._id} className="block no-underline">
+                                <motion.div
+                                    className="product-card"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                >
+                                    {/* Image */}
+                                    <div className="product-img-wrap">
+                                        {product.image ? (
+                                            <img
+                                                src={product.image}
+                                                alt={product.title}
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                    e.target.parentNode.style.background = '#f1f5f9';
+                                                }}
+                                            />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <ShoppingBag size={48} color="#cbd5e1" />
+                                            </div>
+                                        )}
+                                        <div className="price-badge">₦{Number(product.price).toLocaleString()}</div>
+                                    </div>
+
+                                    {/* Body */}
+                                    <div className="product-body">
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                                            <h3 className="product-name">{product.title}</h3>
                                         </div>
-                                    )}
-                                    <div className="price-badge">₦{Number(product.price).toLocaleString()}</div>
-                                </div>
+                                        <p className="product-desc">{product.description || 'Premium product from Lala Tech.'}</p>
 
-                                {/* Body */}
-                                <div className="product-body">
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                                        <h3 className="product-name">{product.title}</h3>
+                                        <div className="product-actions" onClick={(e) => e.preventDefault()}>
+                                            <button className="btn-share" onClick={(e) => { e.stopPropagation(); handleShare(product); }}>
+                                                <Share2 size={15} />
+                                                Share
+                                            </button>
+                                            <button className="btn-buy" onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}>
+                                                <MessageCircle size={15} />
+                                                Buy Now
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p className="product-desc">{product.description || 'Premium product from Lala Tech.'}</p>
-
-                                    <div className="product-actions">
-                                        <button className="btn-share" onClick={() => handleShare(product)}>
-                                            <Share2 size={15} />
-                                            Share
-                                        </button>
-                                        <button className="btn-buy" onClick={() => handleBuyNow(product)}>
-                                            <MessageCircle size={15} />
-                                            Buy Now
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
+                                </motion.div>
+                            </Link>
                         ))}
                     </div>
                 )}
