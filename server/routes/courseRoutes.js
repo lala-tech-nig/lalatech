@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
 
+// Get unique categories
+router.get('/categories', async (req, res) => {
+    try {
+        const categories = await Course.distinct('category');
+        res.json(categories);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Get all courses (with optional category filter)
 router.get('/', async (req, res) => {
     try {

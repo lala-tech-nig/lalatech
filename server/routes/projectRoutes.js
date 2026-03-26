@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const Project = require('../models/Project');
 
+// Get unique categories
+router.get('/categories', async (req, res) => {
+    try {
+        const categories = await Project.distinct('category');
+        res.json(categories);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Get all projects
 router.get('/', async (req, res) => {
     try {

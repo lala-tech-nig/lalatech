@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const News = require('../models/News');
 
+// Get unique categories
+router.get('/categories', async (req, res) => {
+    try {
+        const categories = await News.distinct('category');
+        res.json(categories);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // GET all news (with optional category filter)
 router.get('/', async (req, res) => {
     try {

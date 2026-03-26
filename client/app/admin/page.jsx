@@ -110,9 +110,18 @@ export default function AdminDashboard() {
     const [adminReplies, setAdminReplies] = useState({});
     const [activeFeedComments, setActiveFeedComments] = useState(null);
 
+    // Dynamic Categories State
+    const [categories, setCategories] = useState({
+        projects: [],
+        news: [],
+        courses: [],
+        shop: [],
+        threed: []
+    });
+
     // 3D Posts
     const [threeDPosts, setThreeDPosts] = useState([]);
-    const [newThreeDPost, setNewThreeDPost] = useState({ title: '', story: '', sketchfabUrl: '', thumbnail: '' });
+    const [newThreeDPost, setNewThreeDPost] = useState({ title: '', story: '', sketchfabUrl: '', thumbnail: '', category: 'General' });
     const [threeDThumbPreview, setThreeDThumbPreview] = useState('');
 
     // Upload Previews
@@ -142,8 +151,35 @@ export default function AdminDashboard() {
         }
     }, [newThreeDPost.sketchfabUrl]);
 
+    const fetchCategories = async (type) => {
+        try {
+            // Map the type to the correct endpoint
+            const endpointMap = {
+                projects: 'projects',
+                news: 'news',
+                courses: 'courses',
+                shop: 'products',
+                threed: '3d'
+            };
+            const endpoint = endpointMap[type];
+            if (!endpoint) return;
+
+            const res = await fetch(`${API_BASE_URL}/${endpoint}/categories`);
+            if (res.ok) {
+                const data = await res.json();
+                setCategories(prev => ({ ...prev, [type]: data }));
+            }
+        } catch (err) {
+            console.error(`Failed to fetch categories for ${type}`, err);
+        }
+    };
+
     useEffect(() => {
         fetchData();
+        // Fetch categories when tab changes if relevant
+        if (['projects', 'news', 'courses', 'shop', 'threed'].includes(activeTab)) {
+            fetchCategories(activeTab);
+        }
     }, [activeTab]);
 
     const fetchData = async () => {
@@ -744,16 +780,20 @@ export default function AdminDashboard() {
                                     <input type="text" placeholder="Title" required value={newThreeDPost.title} onChange={e => setNewThreeDPost({ ...newThreeDPost, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
                                     <input type="url" placeholder="Sketchfab URL (e.g. https://sketchfab.com/3d-models/...)" required value={newThreeDPost.sketchfabUrl} onChange={e => setNewThreeDPost({ ...newThreeDPost, sketchfabUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
                                     
-                                    <select value={newThreeDPost.category || 'General'} onChange={e => setNewThreeDPost({ ...newThreeDPost, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition">
-                                        <option value="General">General</option>
-                                        <option value="Programming">Programming</option>
-                                        <option value="Design">Design</option>
-                                        <option value="Business">Business</option>
-                                        <option value="Marketing">Marketing</option>
-                                        <option value="Data Science">Data Science</option>
-                                        <option value="DevOps">DevOps</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                    <div className="relative">
+                                        <input
+                                            list="threed-categories"
+                                            placeholder="Category (e.g. General, Programming)"
+                                            value={newThreeDPost.category || ''}
+                                            onChange={e => setNewThreeDPost({ ...newThreeDPost, category: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition"
+                                        />
+                                        <datalist id="threed-categories">
+                                            {categories.threed.map(cat => (
+                                                <option key={cat} value={cat} />
+                                            ))}
+                                        </datalist>
+                                    </div>
                                     
                                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-2">
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Thumbnail Upload</label>
@@ -858,17 +898,20 @@ export default function AdminDashboard() {
                                     <input type="text" placeholder="Project Title" required value={newProject.title} onChange={e => setNewProject({ ...newProject, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition border-box" />
                                     <textarea placeholder="Small Description" required value={newProject.description} onChange={e => setNewProject({ ...newProject, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition resize-none" rows="3" />
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <select
-                                            value={newProject.category}
-                                            onChange={e => setNewProject({ ...newProject, category: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition"
-                                        >
-                                            <option value="Web Development">Web Development</option>
-                                            <option value="Mobile App">Mobile App</option>
-                                            <option value="AI & ML">AI & ML</option>
-                                            <option value="UI/UX Design">UI/UX Design</option>
-                                            <option value="Digital Marketing">Digital Marketing</option>
-                                        </select>
+                                        <div className="relative">
+                                            <input
+                                                list="project-categories"
+                                                placeholder="Category (e.g. Web Development)"
+                                                value={newProject.category || ''}
+                                                onChange={e => setNewProject({ ...newProject, category: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition"
+                                            />
+                                            <datalist id="project-categories">
+                                                {categories.projects.map(cat => (
+                                                    <option key={cat} value={cat} />
+                                                ))}
+                                            </datalist>
+                                        </div>
                                         <input type="url" placeholder="Website Link (https://...)" required value={newProject.link} onChange={e => setNewProject({ ...newProject, link: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition" />
                                         <input type="url" placeholder="Thumbnail Image URL" required value={newProject.thumbnailUrl} onChange={e => setNewProject({ ...newProject, thumbnailUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 transition sm:col-span-2" />
                                     </div>
@@ -1199,9 +1242,19 @@ export default function AdminDashboard() {
                                     <textarea placeholder="Product Description" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20 resize-none" rows={2} />
                                     <div className="grid grid-cols-2 gap-4">
                                         <input type="number" placeholder="Price (e.g. 15000)" required value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
-                                        <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35]">
-                                            {['General','Electronics','Accessories','Software','Clothing','Books','Other'].map(c => <option key={c}>{c}</option>)}
-                                        </select>
+                                        <div className="relative">
+                                            <input
+                                                list="shop-categories"
+                                                placeholder="Category (e.g. Electronics)"
+                                                value={newProduct.category || ''}
+                                                onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20"
+                                            />
+                                            <datalist id="shop-categories">
+                                                {categories.shop.map(cat => <option key={cat} value={cat} />)}
+                                            </datalist>
+                                        </div>
+
                                     </div>
                                     <div className="relative group">
                                         <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => setNewProduct({ ...newProduct, image: url }), setProductImagePreview)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
@@ -1227,7 +1280,7 @@ export default function AdminDashboard() {
                             </div>
 
                             <div className="flex items-center gap-4 mb-6 overflow-x-auto pb-2 scrollbar-none">
-                                {['All','General','Electronics','Accessories','Software','Clothing','Books','Other'].map(cat => (
+                                {['All', ...categories.shop].map(cat => (
                                     <button 
                                         key={cat}
                                         onClick={() => {
@@ -1269,9 +1322,19 @@ export default function AdminDashboard() {
                                 <form onSubmit={addCourse} className="space-y-4">
                                     <input type="text" placeholder="Course Title" required value={newCourse.title} onChange={e => setNewCourse({ ...newCourse, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
                                     <textarea placeholder="Course Description" required value={newCourse.description} onChange={e => setNewCourse({ ...newCourse, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl resize-none focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
-                                    <select value={newCourse.category} onChange={e => setNewCourse({ ...newCourse, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]">
-                                        {['General','Programming','Design','Business','Marketing','Data Science','DevOps','Other'].map(c => <option key={c}>{c}</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        <input
+                                            list="course-categories"
+                                            placeholder="Category (e.g. Programming)"
+                                            value={newCourse.category || ''}
+                                            onChange={e => setNewCourse({ ...newCourse, category: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20"
+                                        />
+                                        <datalist id="course-categories">
+                                            {categories.courses.map(cat => <option key={cat} value={cat} />)}
+                                        </datalist>
+                                    </div>
+
                                     
                                     {/* YouTube URL - auto-fills thumbnail */}
                                     <div>
@@ -1318,7 +1381,7 @@ export default function AdminDashboard() {
                             </div>
 
                             <div className="flex items-center gap-4 mb-6 overflow-x-auto pb-2 scrollbar-none">
-                                {['All','General','Programming','Design','Business','Marketing','Data Science','DevOps','Other'].map(cat => (
+                                {['All', ...categories.courses].map(cat => (
                                     <button 
                                         key={cat}
                                         onClick={() => {
@@ -1473,9 +1536,18 @@ export default function AdminDashboard() {
                                 <form onSubmit={addArticle} className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <input type="text" placeholder="Article Title" required value={newArticle.title} onChange={e => setNewArticle({ ...newArticle, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
-                                        <select value={newArticle.category} onChange={e => setNewArticle({ ...newArticle, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]">
-                                            {['Technology', 'Business', 'Design', 'Tutorial', 'Industry News', 'General'].map(c => <option key={c}>{c}</option>)}
-                                        </select>
+                                        <div className="relative">
+                                            <input
+                                                list="news-categories"
+                                                placeholder="Category (e.g. Technology)"
+                                                value={newArticle.category || ''}
+                                                onChange={e => setNewArticle({ ...newArticle, category: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]"
+                                            />
+                                            <datalist id="news-categories">
+                                                {categories.news.map(cat => <option key={cat} value={cat} />)}
+                                            </datalist>
+                                        </div>
                                     </div>
                                     
                                     <input type="text" placeholder="Excerpt (Short summary)" required value={newArticle.excerpt} onChange={e => setNewArticle({ ...newArticle, excerpt: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />

@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const ThreeDPost = require('../models/ThreeDPost');
 
+// Get unique categories
+router.get('/categories', async (req, res) => {
+    try {
+        const categories = await ThreeDPost.distinct('category');
+        res.json(categories);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Get all 3D Posts
 router.get('/', async (req, res) => {
     try {

@@ -5,9 +5,6 @@ import { ShoppingBag, Share2, MessageCircle, X, Search } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
-
-const SHOP_CATEGORIES = ['All', 'General', 'Electronics', 'Accessories', 'Software', 'Clothing', 'Books', 'Other'];
-
 export default function ShopPage() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,6 +13,17 @@ export default function ShopPage() {
     const [shareProduct, setShareProduct] = useState(null);
     const [shareCopied, setShareCopied] = useState(false);
     const [whatsappNumber, setWhatsappNumber] = useState('2340000000000');
+    const [categories, setCategories] = useState(['All']);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/products/categories`);
+                if (res.ok) setCategories(['All', ...(await res.json())]);
+            } catch (e) { console.error(e); }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         fetchProducts();
@@ -251,7 +259,7 @@ export default function ShopPage() {
 
                 {/* Category filters */}
                 <div className="category-strip">
-                    {SHOP_CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                         <button
                             key={cat}
                             className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}

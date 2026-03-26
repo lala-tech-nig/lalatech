@@ -9,8 +9,6 @@ import Image from 'next/image';
 // Helper: extract YouTube video id
 const getYouTubeId = (id) => id; // our backend already stores just the ID
 
-const COURSE_CATEGORIES = ['All', 'General', 'Programming', 'Design', 'Business', 'Marketing', 'Data Science', 'DevOps', 'Other'];
-
 export default function CoursePage() {
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -18,6 +16,17 @@ export default function CoursePage() {
     const [search, setSearch] = useState('');
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [introState, setIntroState] = useState('idle'); // idle | speaking | done
+    const [categories, setCategories] = useState(['All']);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/courses/categories`);
+                if (res.ok) setCategories(['All', ...(await res.json())]);
+            } catch (e) { console.error(e); }
+        };
+        fetchCategories();
+    }, []);
     const [introProgress, setIntroProgress] = useState(0);
     const [resumePrompt, setResumePrompt] = useState(null);
     const speechRef = useRef(null);
@@ -450,7 +459,7 @@ export default function CoursePage() {
 
                 {/* Category filters */}
                 <div className="category-strip">
-                    {COURSE_CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                         <button
                             key={cat}
                             className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}

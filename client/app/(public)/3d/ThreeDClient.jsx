@@ -6,14 +6,22 @@ import Link from 'next/link';
 import { Box, Eye, TrendingUp, Search, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
-
-const CATEGORIES = ['All', 'General', 'Programming', 'Design', 'Business', 'Marketing', 'Data Science', 'DevOps', 'Other'];
-
 export default function ThreeDClient() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('All');
     const [search, setSearch] = useState('');
+    const [categories, setCategories] = useState(['All']);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/3d/categories`);
+                if (res.ok) setCategories(['All', ...(await res.json())]);
+            } catch (e) { console.error(e); }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         fetchPosts();
@@ -127,7 +135,7 @@ export default function ThreeDClient() {
                 
                 {/* Category Strip */}
                 <div className="category-strip">
-                    {CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                         <button
                             key={cat}
                             className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}

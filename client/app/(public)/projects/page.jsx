@@ -14,8 +14,17 @@ export default function ProjectsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const [visibleCount, setVisibleCount] = useState(6);
+    const [categories, setCategories] = useState(['All']);
 
-    const categories = ['All', 'Web Development', 'Mobile App', 'AI & ML', 'UI/UX Design', 'Digital Marketing'];
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/projects/categories`);
+                if (res.ok) setCategories(['All', ...(await res.json())]);
+            } catch (e) { console.error(e); }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         const fetchProjects = async () => {

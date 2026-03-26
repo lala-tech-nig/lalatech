@@ -5,14 +5,22 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Tag, TrendingUp, Eye, Heart, Share2, Clock } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
-
-const NEWS_CATEGORIES = ['All', 'Technology', 'Business', 'Design', 'Tutorial', 'Industry News', 'General'];
-
 export default function NewsPage() {
     const [articles, setArticles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('All');
     const [search, setSearch] = useState('');
+    const [categories, setCategories] = useState(['All']);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/news/categories`);
+                if (res.ok) setCategories(['All', ...(await res.json())]);
+            } catch (e) { console.error(e); }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         fetchNews();
@@ -150,7 +158,7 @@ export default function NewsPage() {
 
                 {/* Category filters */}
                 <div className="category-strip">
-                    {NEWS_CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                         <button
                             key={cat}
                             className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}
