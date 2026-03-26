@@ -8,11 +8,21 @@ export default function ThreeDViewer({ embedUrl, title }) {
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
-            containerRef.current.requestFullscreen().catch(err => {
+            containerRef.current.requestFullscreen().then(() => {
+                // Force landscape on mobile devices
+                if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                    window.screen.orientation.lock('landscape').catch(e => {
+                        console.log('Orientation lock not supported or failed:', e);
+                    });
+                }
+            }).catch(err => {
                 console.error(`Error attempting to enable full-screen mode: ${err.message}`);
             });
             setIsFullscreen(true);
         } else {
+            if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                window.screen.orientation.unlock();
+            }
             document.exitFullscreen();
             setIsFullscreen(false);
         }
@@ -38,7 +48,7 @@ export default function ThreeDViewer({ embedUrl, title }) {
     return (
         <div 
             ref={containerRef} 
-            className={`relative w-full overflow-hidden shadow-2xl transition-all duration-500 rounded-[2.5rem] group ${isFullscreen ? 'h-screen w-screen bg-black rounded-none' : 'aspect-video md:aspect-square bg-[#110f0e] border border-slate-800'}`}
+            className={`relative w-full overflow-hidden shadow-2xl transition-all duration-500 rounded-[2.5rem] group ${isFullscreen ? 'h-screen w-screen bg-black rounded-none' : 'min-h-[60vh] md:min-h-0 aspect-[3/4] md:aspect-square bg-[#110f0e] border border-slate-800'}`}
         >
             <iframe 
                 title={title} 
