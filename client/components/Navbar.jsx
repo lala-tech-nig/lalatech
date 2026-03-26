@@ -87,13 +87,13 @@ export default function Navbar() {
                                 animate={{ x: 0 }}
                                 exit={{ x: '100%' }}
                                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                                className="fixed top-0 right-0 h-full w-full bg-white p-10 pt-32 md:hidden flex flex-col items-center text-center gap-8"
+                                className="fixed top-0 right-0 h-full w-full bg-white p-6 pt-24 pb-8 overflow-y-auto md:hidden flex flex-col items-center text-center gap-4 sm:gap-6"
                             >
                                 {navLinks.map((link) => (
                                     <Link
                                         key={link.name || link.label}
                                         href={link.href}
-                                        className={`text-3xl font-black transition-colors relative ${pathname === link.href ? 'text-[#f89e35]' : 'text-slate-900 hover:text-[#f89e35]'}`}
+                                        className={`text-2xl font-black transition-colors relative ${pathname === link.href ? 'text-[#f89e35]' : 'text-slate-900 hover:text-[#f89e35]'}`}
                                     >
                                         {link.name || link.label}
                                         {pathname === link.href && (
@@ -103,7 +103,7 @@ export default function Navbar() {
                                 ))}
                                 <Link
                                     href="/#contact"
-                                    className="mt-4 w-full bg-[#f89e35] text-white px-8 py-5 rounded-3xl font-black text-center text-xl shadow-xl shadow-[#f89e35]/20"
+                                    className="mt-4 w-full bg-[#f89e35] text-white px-8 py-4 rounded-3xl font-black text-center text-lg shadow-xl shadow-[#f89e35]/20 flex-shrink-0"
                                 >
                                     Get in Touch
                                 </Link>
