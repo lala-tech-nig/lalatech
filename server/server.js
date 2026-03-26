@@ -21,6 +21,7 @@ const toolRoutes = require('./routes/toolRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const threeDRoutes = require('./routes/threeDRoutes');
+const authRoutes = require('./routes/authRoutes');
 const path = require('path');
 
 
@@ -30,7 +31,44 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+const jwt = require('jsonwebtoken');
+
+// Global Auth Middleware for admin requests
+app.use((req, res, next) => {
+    const publicMutableRoutes = [
+        '/api/auth/login',         // Admin login
+        '/api/contacts',           // Contact form
+        '/api/applications',       // Job app form
+        '/api/comments',           // Public comments
+        '/api/service-requests'    // Service requests
+    ];
+
+    // If it's a mutation request (POST/PUT/DELETE) and not in the public list -> verify token
+    if (req.method !== 'GET' && !publicMutableRoutes.some(p => req.path.startsWith(p))) {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'Unauthorized: No token provided' });
+        }
+        
+        const token = authHeader.split(' ')[1];
+        try {
+            const secret = process.env.JWT_SECRET || 'lalatech_super_secret_key_2026';
+            const decoded = jwt.verify(token, secret);
+            if (!decoded.admin) {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            req.admin = decoded;
+            next();
+        } catch (err) {
+            return res.status(401).json({ message: 'Unauthorized: Invalid token' });
+        }
+    } else {
+        next();
+    }
+});
+
 // Main Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/products', productRoutes);

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2, Box } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2, Box, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -129,6 +129,56 @@ export default function AdminDashboard() {
     const [courseThumbPreview, setCourseThumbPreview] = useState('');
     const [feedImagePreview, setFeedImagePreview] = useState('');
     const [promoMediaPreview, setPromoMediaPreview] = useState('');
+
+    // --- Authentication State ---
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState('');
+    const [authLoading, setAuthLoading] = useState(false);
+
+    useEffect(() => {
+        const token = localStorage.getItem('adminToken');
+        if (token) setIsAuthenticated(true);
+    }, []);
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setAuthLoading(true);
+        try {
+            const res = await window.fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                localStorage.setItem('adminToken', data.token);
+                setIsAuthenticated(true);
+                setLoginError('');
+            } else {
+                setLoginError(data.message || 'Invalid credentials');
+            }
+        } catch (error) {
+            setLoginError('Error connecting to server');
+        } finally {
+            setAuthLoading(false);
+        }
+    };
+
+    const fetch = async (url, options = {}) => {
+        const token = localStorage.getItem('adminToken');
+        const headers = { ...options.headers };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        
+        const response = await window.fetch(url, { ...options, headers });
+        if (response.status === 401 || response.status === 403) {
+            setIsAuthenticated(false);
+            localStorage.removeItem('adminToken');
+            toast.error('Session expired or unauthorized. Please login again.');
+        }
+        return response;
+    };
+    // -------------------------
 
     useEffect(() => {
         if (newThreeDPost.sketchfabUrl && newThreeDPost.sketchfabUrl.includes('sketchfab.com')) {
@@ -493,6 +543,65 @@ export default function AdminDashboard() {
         setIsSidebarOpen(false);
     }, [activeTab]);
 
+    if (!isAuthenticated) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden">
+                <div className="absolute inset-0 z-0 pointer-events-none">
+                    <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#f89e35]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3"></div>
+                    <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-slate-900/5 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/4"></div>
+                </div>
+
+                <div className="relative z-10 w-full max-w-[420px] p-8">
+                    <div className="bg-white rounded-[32px] p-10 shadow-2xl border border-slate-100 relative overflow-hidden text-center">
+                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#f89e35] to-[#f56e00] flex items-center justify-center mx-auto mb-8 shadow-lg shadow-[#f89e35]/30">
+                            <span className="text-white font-black text-2xl tracking-tighter">LT</span>
+                        </div>
+                        
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Admin Portal</h2>
+                        <p className="text-slate-500 font-medium mb-8 text-sm">Sign in to manage Lala Tech Platform</p>
+
+                        {loginError && (
+                            <div className="bg-red-50 text-red-500 text-sm font-bold p-3 rounded-xl mb-6 border border-red-100 animate-in fade-in slide-in-from-top-2">
+                                {loginError}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            <div className="relative">
+                                <input
+                                    type="password"
+                                    placeholder="Enter Admin Password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-5 py-4 rounded-2xl font-medium focus:outline-none focus:border-[#f89e35] focus:ring-4 focus:ring-[#f89e35]/10 shadow-inner transition-all"
+                                    required
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={authLoading}
+                                className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white py-4 rounded-2xl font-black text-sm tracking-wide transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0"
+                            >
+                                {authLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#f89e35]" /> : 'SECURE LOGIN ➔'}
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div className="text-center mt-8">
+                        <Link href="/" className="text-slate-400 hover:text-slate-600 font-bold text-sm transition-colors py-2 px-4 rounded-full hover:bg-slate-100 inline-flex items-center gap-2">
+                            ← Back to Website
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const logout = () => {
+        localStorage.removeItem('adminToken');
+        setIsAuthenticated(false);
+    };
+
     return (
         <div className="flex h-screen overflow-hidden bg-white selection:bg-[#f89e35] selection:text-white relative">
             <Toaster position="top-right" toastOptions={{ style: { background: '#ffffff', color: '#0f172a', border: '1px solid #e2e8f0' } }} />
@@ -588,8 +697,11 @@ export default function AdminDashboard() {
 
                             {/* Footer - sticky at bottom */}
                             <div className="p-6 pt-4 flex-shrink-0 border-t border-slate-200/60">
-                                <Link href="/" className="flex items-center gap-3 font-semibold text-slate-500 hover:text-slate-900 px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all">
-                                    <LogOut className="w-5 h-5" /> Back to Website
+                                <button onClick={logout} className="w-full flex items-center gap-3 font-semibold text-slate-500 hover:text-red-500 px-4 py-3 rounded-xl hover:bg-red-50 hover:shadow-sm transition-all">
+                                    <LogOut className="w-5 h-5" /> Logout
+                                </button>
+                                <Link href="/" className="mt-2 w-full flex items-center gap-3 font-semibold text-slate-500 hover:text-slate-900 px-4 py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                                    <ArrowRight className="w-5 h-5" /> Live Site
                                 </Link>
                             </div>
                         </motion.div>
