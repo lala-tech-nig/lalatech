@@ -42,6 +42,7 @@ router.post('/', async (req, res) => {
         price: req.body.price,
         image: req.body.image,
         category: req.body.category || 'General',
+        youtubeUrl: req.body.youtubeUrl,
     });
 
     try {

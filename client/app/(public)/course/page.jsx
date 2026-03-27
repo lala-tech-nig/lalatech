@@ -5,6 +5,7 @@ import { PlayCircle, Clock, X, Volume2, SkipForward, BookOpen, Search } from 'lu
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
 import Image from 'next/image';
+import YoutubeDuration from '@/components/YoutubeDuration';
 
 // Helper: extract YouTube video id
 const getYouTubeId = (id) => id; // our backend already stores just the ID
@@ -513,6 +514,7 @@ export default function CoursePage() {
                                             e.target.src = `https://img.youtube.com/vi/${course.youtubeVideoId}/hqdefault.jpg`;
                                         }}
                                     />
+                                    {course.youtubeVideoId && <YoutubeDuration videoId={course.youtubeVideoId} />}
                                     <div className="card-play-btn">
                                         <div className="play-circle">
                                             <PlayCircle size={32} color="#f89e35" />

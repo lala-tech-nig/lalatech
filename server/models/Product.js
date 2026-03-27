@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     image: { type: String, required: false },
     category: { type: String, default: 'General' },
+    youtubeUrl: { type: String, required: false },
 }, { timestamps: true });
 
 productSchema.pre('validate', async function () {

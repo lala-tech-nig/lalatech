@@ -4,14 +4,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, ArrowLeft, MessageCircle, Share2, ShieldCheck, Truck, RefreshCcw } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, MessageCircle, Share2, ShieldCheck, Truck, RefreshCcw, PlayCircle } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import YoutubeDuration from '@/components/YoutubeDuration';
 
 export default function ProductDetailClient({ initialProduct, slug }) {
     const router = useRouter();
     const [product, setProduct] = useState(initialProduct);
     const [loading, setLoading] = useState(!initialProduct);
     const [whatsappNumber, setWhatsappNumber] = useState('2348121444306');
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    const extractVideoId = (url) => {
+        if (!url) return null;
+        const match = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+        return match ? match[1] : null;
+    };
 
     useEffect(() => {
         if (!product && slug) {
@@ -105,21 +113,51 @@ export default function ProductDetailClient({ initialProduct, slug }) {
                         animate={{ opacity: 1, x: 0 }}
                         className="bg-white rounded-[32px] overflow-hidden shadow-xl shadow-slate-200/50 border border-white"
                     >
-                        <div className="aspect-square relative group">
-                            {product.image ? (
-                                <img 
-                                    src={product.image} 
-                                    alt={product.title}
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        <div className="aspect-square relative group rounded-[32px] overflow-hidden bg-slate-100">
+                            {isPlaying && extractVideoId(product.youtubeUrl) ? (
+                                <iframe
+                                    src={`https://www.youtube.com/embed/${extractVideoId(product.youtubeUrl)}?autoplay=1`}
+                                    title={product.title}
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="w-full h-full absolute inset-0"
                                 />
                             ) : (
-                                <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                                    <ShoppingBag size={80} className="text-slate-300" />
-                                </div>
+                                <>
+                                    {product.image ? (
+                                        <img 
+                                            src={product.image} 
+                                            alt={product.title}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                                            <ShoppingBag size={80} className="text-slate-300" />
+                                        </div>
+                                    )}
+                                    
+                                    {extractVideoId(product.youtubeUrl) && (
+                                        <>
+                                            <YoutubeDuration videoId={extractVideoId(product.youtubeUrl)} className="absolute bottom-6 left-6 scale-110 origin-bottom-left" />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+                                                <button 
+                                                    onClick={() => setIsPlaying(true)}
+                                                    className="w-20 h-20 rounded-full flex items-center justify-center bg-white/95 backdrop-blur shadow-2xl text-[#f89e35] group-hover:scale-110 group-hover:bg-white transition-all border border-white/20"
+                                                >
+                                                    <PlayCircle size={36} className="ml-1" fill="currentColor" />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {!isPlaying && (
+                                        <div className="absolute top-6 right-6 bg-[#f89e35] text-white px-6 py-2 rounded-full font-black text-lg shadow-xl shadow-[#f89e35]/30">
+                                            ₦{Number(product.price).toLocaleString()}
+                                        </div>
+                                    )}
+                                </>
                             )}
-                            <div className="absolute top-6 right-6 bg-[#f89e35] text-white px-6 py-2 rounded-full font-black text-lg shadow-xl shadow-[#f89e35]/30">
-                                ₦{Number(product.price).toLocaleString()}
-                            </div>
                         </div>
                     </motion.div>
 
