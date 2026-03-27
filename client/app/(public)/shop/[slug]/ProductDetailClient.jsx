@@ -114,50 +114,20 @@ export default function ProductDetailClient({ initialProduct, slug }) {
                         className="bg-white rounded-[32px] overflow-hidden shadow-xl shadow-slate-200/50 border border-white"
                     >
                         <div className="aspect-square relative group rounded-[32px] overflow-hidden bg-slate-100">
-                            {isPlaying && extractVideoId(product.youtubeUrl) ? (
-                                <iframe
-                                    src={`https://www.youtube.com/embed/${extractVideoId(product.youtubeUrl)}?autoplay=1`}
-                                    title={product.title}
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    className="w-full h-full absolute inset-0"
+                            {product.image ? (
+                                <img 
+                                    src={product.image} 
+                                    alt={product.title}
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                 />
                             ) : (
-                                <>
-                                    {product.image ? (
-                                        <img 
-                                            src={product.image} 
-                                            alt={product.title}
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                                            <ShoppingBag size={80} className="text-slate-300" />
-                                        </div>
-                                    )}
-                                    
-                                    {extractVideoId(product.youtubeUrl) && (
-                                        <>
-                                            <YoutubeDuration videoId={extractVideoId(product.youtubeUrl)} className="absolute bottom-6 left-6 scale-110 origin-bottom-left" />
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
-                                                <button 
-                                                    onClick={() => setIsPlaying(true)}
-                                                    className="w-20 h-20 rounded-full flex items-center justify-center bg-white/95 backdrop-blur shadow-2xl text-[#f89e35] group-hover:scale-110 group-hover:bg-white transition-all border border-white/20"
-                                                >
-                                                    <PlayCircle size={36} className="ml-1" fill="currentColor" />
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    {!isPlaying && (
-                                        <div className="absolute top-6 right-6 bg-[#f89e35] text-white px-6 py-2 rounded-full font-black text-lg shadow-xl shadow-[#f89e35]/30">
-                                            ₦{Number(product.price).toLocaleString()}
-                                        </div>
-                                    )}
-                                </>
+                                <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                                    <ShoppingBag size={80} className="text-slate-300" />
+                                </div>
                             )}
+                            <div className="absolute top-6 right-6 bg-[#f89e35] text-white px-6 py-2 rounded-full font-black text-lg shadow-xl shadow-[#f89e35]/30">
+                                ₦{Number(product.price).toLocaleString()}
+                            </div>
                         </div>
                     </motion.div>
 
@@ -181,7 +151,7 @@ export default function ProductDetailClient({ initialProduct, slug }) {
                                 {product.title}
                             </h1>
 
-                            <div className="space-y-6 mb-10">
+                            <div className="space-y-6 mb-6">
                                 <p className="text-slate-600 text-lg leading-relaxed whitespace-pre-wrap">
                                     {product.description || 'Experience excellence with this premium product from Lala Tech.'}
                                 </p>
@@ -233,6 +203,51 @@ export default function ProductDetailClient({ initialProduct, slug }) {
                         </div>
                     </motion.div>
                 </div>
+
+                {/* Independent Full-Width YouTube Video Section */}
+                {extractVideoId(product.youtubeUrl) && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="mt-20 max-w-4xl mx-auto"
+                    >
+                        <h3 className="text-2xl md:text-3xl font-black text-slate-900 mb-8 text-center flex items-center justify-center gap-3">
+                            <PlayCircle size={32} className="text-[#f89e35]" /> 
+                            Watch to know more about this product
+                        </h3>
+                        <div className="relative aspect-video bg-slate-900 rounded-[32px] overflow-hidden group shadow-2xl border-4 border-white">
+                            {isPlaying ? (
+                                <iframe
+                                    src={`https://www.youtube.com/embed/${extractVideoId(product.youtubeUrl)}?autoplay=1`}
+                                    title={product.title}
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="w-full h-full absolute inset-0"
+                                />
+                            ) : (
+                                <>
+                                    <img 
+                                        src={`https://img.youtube.com/vi/${extractVideoId(product.youtubeUrl)}/maxresdefault.jpg`}
+                                        alt="Video Thumbnail"
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80"
+                                        onError={(e) => { e.target.src = `https://img.youtube.com/vi/${extractVideoId(product.youtubeUrl)}/hqdefault.jpg`; }}
+                                    />
+                                    <YoutubeDuration videoId={extractVideoId(product.youtubeUrl)} className="absolute bottom-6 left-6 scale-125 origin-bottom-left" />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                                        <button 
+                                            onClick={() => setIsPlaying(true)}
+                                            className="w-24 h-24 rounded-full flex items-center justify-center bg-white/95 backdrop-blur shadow-[0_20px_40px_rgba(248,158,53,0.3)] text-[#f89e35] group-hover:scale-110 transition-transform"
+                                        >
+                                            <PlayCircle size={48} className="ml-2" fill="currentColor" />
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
             </div>
         </div>
     );

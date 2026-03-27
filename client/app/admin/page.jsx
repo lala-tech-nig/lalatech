@@ -543,15 +543,6 @@ export default function AdminDashboard() {
 
     const handleProductVideoUrlChange = (url) => {
         setNewProduct(prev => ({ ...prev, youtubeUrl: url }));
-        const urlMatch = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
-        if (urlMatch) {
-            const videoId = urlMatch[1];
-            const autoThumb = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-            if (!productImagePreview) {
-                setProductImagePreview(autoThumb);
-                setNewProduct(prev => ({ ...prev, image: autoThumb }));
-            }
-        }
     };
 
     useEffect(() => {
@@ -1385,7 +1376,7 @@ export default function AdminDashboard() {
                                     
                                     <div>
                                         <input type="url" placeholder="YouTube Video URL (Optional)" value={newProduct.youtubeUrl || ''} onChange={e => handleProductVideoUrlChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 font-medium rounded-xl p-4 text-slate-900 focus:outline-none focus:border-[#f89e35] focus:ring-2 focus:ring-[#f89e35]/20" />
-                                        <p className="text-[11px] text-slate-400 mt-1 font-medium">Auto-fills the product main image with video thumbnail.</p>
+                                        <p className="text-[11px] text-slate-400 mt-1 font-medium">Video will be displayed on the product page.</p>
                                     </div>
                                     <div className="relative group">
                                         <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => setNewProduct({ ...newProduct, image: url }), setProductImagePreview)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />

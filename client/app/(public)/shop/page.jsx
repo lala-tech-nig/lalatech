@@ -236,9 +236,18 @@ export default function ShopPage() {
                                 </div>
                                 <h3 className="text-xl font-black text-slate-900 mb-2">No Products Found</h3>
                                 <p className="text-slate-500 mb-8 max-w-sm mx-auto">Try adjusting your category or search to find what you're looking for.</p>
-                                <button onClick={() => {setSearch(''); setActiveCategory('All');}} className="bg-[#f89e35] text-white px-8 py-3 rounded-xl font-bold shadow-md shadow-[#f89e35]/20 hover:scale-105 transition-transform">
-                                    Clear Filters
-                                </button>
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                                    <button onClick={() => {setSearch(''); setActiveCategory('All');}} className="bg-slate-100 text-slate-600 hover:bg-slate-200 px-8 py-3 rounded-xl font-bold transition-colors">
+                                        Clear Filters
+                                    </button>
+                                    <button onClick={() => {
+                                        const message = `Hey! 👋 I couldn't find what I was looking for in the shop. Can you help me find a specific product?`;
+                                        window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                                    }} className="bg-[#f89e35] flex items-center gap-2 text-white px-8 py-3 rounded-xl font-bold shadow-md shadow-[#f89e35]/20 hover:scale-105 transition-transform">
+                                        <MessageCircle size={18} />
+                                        Can't find what you want?
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
