@@ -12,7 +12,9 @@ import { toolsList } from '@/lib/toolsList';
 // Helper to map categories to specific icons and colors
 const getCategoryStyle = (category) => {
     switch(category) {
+        case 'Document Tools':
         case 'Pdf Tools': return { icon: FileText, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100', gradient: 'from-red-500 to-rose-600' };
+        case 'Repair Tools': return { icon: Wrench, color: 'text-lime-500', bg: 'bg-lime-50', border: 'border-lime-100', gradient: 'from-lime-500 to-green-600' };
         case 'Image Tools': return { icon: ImageIcon, color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100', gradient: 'from-indigo-500 to-blue-600' };
         case 'AI Write': return { icon: PenTool, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100', gradient: 'from-purple-500 to-fuchsia-600' };
         case 'Video Tools': return { icon: Video, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100', gradient: 'from-emerald-500 to-teal-600' };
@@ -23,7 +25,7 @@ const getCategoryStyle = (category) => {
     }
 };
 
-const CATEGORIES = ['All', 'Pdf Tools', 'Image Tools', 'AI Write', 'Video Tools', 'Converter Tools', 'Web Tools', 'Other Tools'];
+const CATEGORIES = ['All', 'Repair Tools', 'Document Tools', 'Image Tools', 'AI Write', 'Video Tools', 'Converter Tools', 'Web Tools', 'Other Tools'];
 
 export default function ToolsPage() {
     const [search, setSearch] = useState('');
@@ -31,7 +33,8 @@ export default function ToolsPage() {
 
     const filteredTools = useMemo(() => {
         return toolsList.filter(tool => {
-            const matchesCategory = activeCategory === 'All' || tool.category === activeCategory;
+            const isDocTool = activeCategory === 'Document Tools' && tool.category === 'Pdf Tools';
+            const matchesCategory = activeCategory === 'All' || tool.category === activeCategory || isDocTool;
             const matchesSearch = tool.name.toLowerCase().includes(search.toLowerCase()) || 
                                   tool.desc.toLowerCase().includes(search.toLowerCase());
             return matchesCategory && matchesSearch;

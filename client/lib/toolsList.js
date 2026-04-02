@@ -220,5 +220,11 @@ export const toolsList = [
     "category": "Other Tools",
     "desc": "Convert epoch to human-readable date and vice versa",
     "slug": "epoch-converter"
+  },
+  {
+    "name": "Hardware Diagnostic Tool",
+    "category": "Repair Tools",
+    "desc": "Test hardware components like screen, keyboard, audio, and sensors",
+    "slug": "hardware-diagnostics"
   }
 ];
