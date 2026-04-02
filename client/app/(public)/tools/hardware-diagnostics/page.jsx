@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { 
   CheckCircle, XCircle, Play, Smartphone, Monitor, Cpu, Fingerprint, 
   Wifi, Volume2, Camera, Keyboard, Battery, Mic, Share2, Download, ShieldAlert,
@@ -63,92 +64,119 @@ export default function HardwareDiagnosticsPage() {
         setActiveTest(null);
     };
 
-    const generateNativePDF = () => {
+    const generateLetterheadPDF = async () => {
         try {
-            const pdf = new jsPDF('p', 'mm', 'a4');
+            const url = '/lalatech.pdf';
+            const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer());
+            const pdfDoc = await PDFDocument.load(existingPdfBytes);
+            const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
             
-            // Header
-            pdf.setFont("helvetica", "bold");
-            pdf.setFontSize(22);
-            pdf.setTextColor(248, 158, 53); // Orange
-            pdf.text("Lalatech Hardware Diagnostics", 20, 25);
+            const pages = pdfDoc.getPages();
+            const firstPage = pages[0];
+            const { height } = firstPage.getSize();
             
-            pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(10);
-            pdf.setTextColor(150, 150, 150);
-            pdf.text(`Generated on: ${dateString}`, 20, 32);
+            const drawText = (text, x, y, size = 11, font = helveticaFont, color = rgb(0.2, 0.2, 0.2)) => {
+                firstPage.drawText(text, { x, y: height - y, size, font, color });
+            };
 
-            // Device Info
-            pdf.setFont("helvetica", "bold");
-            pdf.setFontSize(14);
-            pdf.setTextColor(50, 50, 50);
-            pdf.text("Device Information", 20, 45);
+            const orangeColor = rgb(0.97, 0.61, 0.2); // approx #f89e35
+            const redColor = rgb(0.93, 0.26, 0.26);
+            const greenColor = rgb(0.13, 0.77, 0.36);
+
+            // Shift everything down to account for the letterhead header.
+            let startY = 160;
             
-            pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(11);
-            pdf.text(`OS: ${deviceInfo.os}`, 25, 55);
-            pdf.text(`Browser: ${deviceInfo.browser}`, 25, 62);
-            pdf.text(`Cores: ${deviceInfo.cores}`, 105, 55);
-            pdf.text(`Memory: ${deviceInfo.memory}`, 105, 62);
+            drawText("Hardware Diagnostics Report", 50, startY, 20, helveticaBold, orangeColor);
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            drawText(`Generated on: ${dateString} at ${timeString}`, 50, startY + 20, 10);
+            drawText(`Tool URL: ${window.location.href}`, 50, startY + 35, 10);
 
-            // Divider
-            pdf.setDrawColor(230, 230, 230);
-            pdf.line(20, 70, 190, 70);
+            drawText("Device Information", 50, startY + 65, 14, helveticaBold);
+            drawText(`OS: ${deviceInfo.os}`, 50, startY + 85);
+            drawText(`Browser: ${deviceInfo.browser}`, 50, startY + 100);
+            drawText(`Logic Cores: ${deviceInfo.cores}`, 250, startY + 85);
+            drawText(`Memory: ${deviceInfo.memory}`, 250, startY + 100);
 
-            // Test Results
-            pdf.setFont("helvetica", "bold");
-            pdf.setFontSize(14);
-            pdf.text("Test Suite Results", 20, 85);
+            drawText("Test Suite Results", 50, startY + 135, 14, helveticaBold);
 
-            let yPos = 95;
+            let yPos = startY + 160;
             tests.forEach((test) => {
                 const status = testResults[test.id];
                 let statusText = 'Not Tested';
-                let r = 150, g = 150, b = 150; // Gray
+                let color = rgb(0.6, 0.6, 0.6); // Gray
                 
                 if (status === true) {
                     statusText = 'PASSED';
-                    r = 34; g = 197; b = 94; // Green
+                    color = greenColor;
                 } else if (status === false) {
                     statusText = 'FAILED';
-                    r = 239; g = 68; b = 68; // Red
+                    color = redColor;
                 }
 
-                pdf.setFont("helvetica", "normal");
-                pdf.setTextColor(50, 50, 50);
-                pdf.text(`${test.title}:`, 25, yPos);
+                drawText(`${test.title}:`, 50, yPos);
+                drawText(statusText, 250, yPos, 11, helveticaBold, color);
                 
-                pdf.setFont("helvetica", "bold");
-                pdf.setTextColor(r, g, b);
-                pdf.text(statusText, 105, yPos);
-                
-                yPos += 10;
+                yPos += 20;
             });
             
-            pdf.save('Lalatech_Diagnostics.pdf');
+            return await pdfDoc.save();
         } catch (err) {
-            console.error('PDF error:', err);
-            alert('Could not generate PDF. Please use your browser Print feature.');
-            window.print();
+            console.error('Letterhead generation error:', err);
+            return null;
         }
     };
 
-    const handleWhatsAppShare = () => {
-        let text = `*Lalatech Diagnostics Report*\n\n`;
-        text += `📱 *Device Info:*\n`;
-        text += `OS: ${deviceInfo.os} | Browser: ${deviceInfo.browser}\n\n`;
+    const generateNativePDF = async () => {
+        const pdfBytes = await generateLetterheadPDF();
+        if (!pdfBytes) {
+            alert('Could not generate PDF with Letterhead template. Check if lalatech.pdf exists.');
+            return;
+        }
+
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'Lalatech_Diagnostics_Letterhead.pdf';
+        link.click();
+    };
+
+    const handleWhatsAppShare = async () => {
+        const textStr = `*Lalatech Diagnostics Report*\n📱 *Device Info:*\nOS: ${deviceInfo.os} | Browser: ${deviceInfo.browser}\n\n*Check out the attached PDF for full details!*\n\nTest your own device at Lalatech: ${window.location.href}`;
+
+        const pdfBytes = await generateLetterheadPDF();
         
-        text += `🛠️ *Test Results:*\n`;
-        tests.forEach(test => {
-            const status = testResults[test.id];
-            let emoji = '⚪ Not Tested';
-            if (status === true) emoji = '✅ Passed';
-            if (status === false) emoji = '❌ Failed';
-            text += `- ${test.title}: ${emoji}\n`;
-        });
-        
-        text += `\nTest your own device at Lalatech!`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        if (pdfBytes && navigator.share && navigator.canShare) {
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const file = new File([blob], 'Lalatech_Diagnostics_Letterhead.pdf', { type: 'application/pdf' });
+            
+            if (navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        title: 'Hardware Diagnostic Report - Lalatech',
+                        text: textStr,
+                        files: [file]
+                    });
+                    return; // Successfully shared natively
+                } catch (e) {
+                    console.warn("Native share cancelled or failed:", e);
+                }
+            }
+        }
+
+        // Fallback for Desktop where navigator.share for files is not supported
+        if (pdfBytes) {
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Lalatech_Diagnostics_Letterhead.pdf';
+            link.click();
+            alert('Your letterhead report is downloading! You can manually attach it directly to your WhatsApp text.');
+        }
+
+        window.open(`https://wa.me/?text=${encodeURIComponent(textStr)}`, '_blank');
     };
 
     const tests = [
