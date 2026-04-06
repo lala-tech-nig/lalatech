@@ -10,6 +10,7 @@ const scamSchema = new mongoose.Schema({
     likes: { type: Number, default: 0 },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
     adminReply: { type: String, default: '' },
+    adminReplyImage: { type: String, default: '' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Scam', scamSchema);

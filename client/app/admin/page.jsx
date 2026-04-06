@@ -142,6 +142,7 @@ export default function AdminDashboard() {
     const [courseThumbPreview, setCourseThumbPreview] = useState('');
     const [feedImagePreview, setFeedImagePreview] = useState('');
     const [promoMediaPreview, setPromoMediaPreview] = useState('');
+    const [scamReplyImagePreviews, setScamReplyImagePreviews] = useState({});
 
     // --- Authentication State ---
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1910,21 +1911,63 @@ export default function AdminDashboard() {
                                             {scam.adminReply && (
                                                 <p className="text-sm text-slate-700 mb-3 italic">Current: "{scam.adminReply}"</p>
                                             )}
-                                            <div className="flex gap-2">
-                                                <input type="text" placeholder="Add or update official response..." value={scamAdminReplies[scam._id] || ''} onChange={e => setScamAdminReplies(p => ({ ...p, [scam._id]: e.target.value }))} className="flex-1 bg-white border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#f89e35]" />
-                                                <LoadingButton
-                                                    onClick={async () => {
-                                                        const text = scamAdminReplies[scam._id]?.trim();
-                                                        if (!text) return;
-                                                        await fetch(`${API_BASE_URL}/scams/${scam._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminReply: text }) });
-                                                        toast.success('Official reply saved!');
-                                                        setScamAdminReplies(p => ({ ...p, [scam._id]: '' }));
-                                                        fetchData();
-                                                    }}
-                                                    className="bg-[#f89e35] hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5"
-                                                >
-                                                    <Send className="w-3.5 h-3.5" /> Save
-                                                </LoadingButton>
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex gap-2">
+                                                    <input type="text" placeholder="Add or update official response..." value={scamAdminReplies[scam._id] || ''} onChange={e => setScamAdminReplies(p => ({ ...p, [scam._id]: e.target.value }))} className="flex-1 bg-white border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#f89e35]" />
+                                                    <LoadingButton
+                                                        onClick={async () => {
+                                                            const text = scamAdminReplies[scam._id]?.trim();
+                                                            const imageUrl = scamReplyImagePreviews[scam._id] || scam.adminReplyImage || '';
+                                                            if (!text && !imageUrl) return;
+                                                            await fetch(`${API_BASE_URL}/scams/${scam._id}`, { 
+                                                                method: 'PUT', 
+                                                                headers: { 'Content-Type': 'application/json' }, 
+                                                                body: JSON.stringify({ adminReply: text, adminReplyImage: imageUrl }) 
+                                                            });
+                                                            toast.success('Official response saved!');
+                                                            setScamAdminReplies(p => ({ ...p, [scam._id]: '' }));
+                                                            fetchData();
+                                                        }}
+                                                        className="bg-[#f89e35] hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5"
+                                                    >
+                                                        <Send className="w-3.5 h-3.5" /> Save Response
+                                                    </LoadingButton>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-4">
+                                                    <div className="relative group flex-shrink-0">
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            onChange={(e) => handleFileUpload(e, (url) => setScamReplyImagePreviews(p => ({...p, [scam._id]: url})))} 
+                                                            className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                                                        />
+                                                        {scamReplyImagePreviews[scam._id] || scam.adminReplyImage ? (
+                                                            <div className="relative h-16 w-24 rounded-lg overflow-hidden border border-orange-200 shadow-sm">
+                                                                <img src={scamReplyImagePreviews[scam._id] || scam.adminReplyImage} className="w-full h-full object-cover" alt="Reply Evidence" />
+                                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <Camera className="w-4 h-4 text-white" />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-16 w-24 rounded-lg border-2 border-dashed border-orange-200 flex flex-col items-center justify-center text-orange-300 hover:text-[#f89e35] hover:border-[#f89e35] transition-all bg-white/50">
+                                                                <Camera className="w-5 h-5" />
+                                                                <span className="text-[9px] font-bold">Add Image</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {(scamReplyImagePreviews[scam._id] || scam.adminReplyImage) && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setScamReplyImagePreviews(p => ({...p, [scam._id]: ''}));
+                                                                // If we wanted to clear it on server too, we'd need a separate save or just wait for 'Save'
+                                                            }} 
+                                                            className="text-[10px] font-bold text-red-500 hover:underline"
+                                                        >
+                                                            Remove Image
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

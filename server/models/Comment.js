@@ -7,6 +7,7 @@ const commentSchema = new mongoose.Schema({
     author: { type: String, default: 'Anonymous' },
     content: { type: String, required: true },
     image: { type: String, default: '' },
+    fileType: { type: String, default: 'image' }, // 'image', 'video', 'audio', 'file'
     isAdmin: { type: Boolean, default: false },
     likes: { type: Number, default: 0 },
 }, { timestamps: true });

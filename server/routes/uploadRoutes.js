@@ -20,7 +20,7 @@ const storage = new CloudinaryStorage({
     return {
       folder: 'lalatech',
       resource_type: 'auto',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'pdf', 'doc', 'docx']
+      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'pdf', 'doc', 'docx', 'mp3', 'wav', 'aac', 'mov', 'avi']
     };
   }
 });

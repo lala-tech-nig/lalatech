@@ -55,39 +55,39 @@ export default function GalleryPage() {
                 .masonry { columns: 4; column-gap: 20px; }
                 .masonry-item { break-inside: avoid; margin-bottom: 20px; position: relative; cursor: pointer; border-radius: 20px; background: #f8fafc; border: 1px solid #f1f5f9; z-index: 1; }
                 
-                /* Folder Styling for multiple images */
-                .masonry-item.is-folder { margin-top: 12px; margin-bottom: 32px; }
-                .masonry-item.is-folder::before {
-                    content: ''; position: absolute; top: -8px; right: 6px; bottom: 8px; left: 6px;
-                    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 20px; z-index: -1;
-                    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                /* Folder Styling for multiple images - physically looking folder */
+                .masonry-item.is-folder { margin-top: 18px; margin-bottom: 38px; }
+                .folder-base { 
+                    position: absolute; inset: -4px; background: #e2e8f0; border-radius: 24px; z-index: -1; 
+                    transform: rotate(-1.5deg); border: 1px solid #cbd5e1;
                 }
-                .masonry-item.is-folder::after {
-                    content: ''; position: absolute; top: -16px; right: 12px; bottom: 16px; left: 12px;
-                    background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 20px; z-index: -2;
-                    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                .folder-back { 
+                    position: absolute; inset: -8px; background: #f1f5f9; border-radius: 28px; z-index: -2; 
+                    transform: rotate(2.5deg); border: 1px solid #e2e8f0;
                 }
-                .masonry-item.is-folder:hover::before { transform: rotate(3deg) scale(0.98); border-color: rgba(248,158,53,0.3); background: rgba(248,158,53,0.05); }
-                .masonry-item.is-folder:hover::after { transform: rotate(-3deg) scale(0.95); border-color: rgba(248,158,53,0.2); background: rgba(248,158,53,0.02); }
+                .masonry-item:hover .folder-base { transform: rotate(1deg) scale(1.02); background: #f89e35; border-color: #f89e35; }
+                .masonry-item:hover .folder-back { transform: rotate(-2deg) scale(1.04); background: #f5f5f5; }
 
-                .folder-badge {
-                    position: absolute; top: 16px; left: 16px; background: rgba(255,255,255,0.9);
-                    backdrop-filter: blur(8px); color: #0f172a; padding: 6px 12px; border-radius: 100px;
-                    font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 6px; z-index: 10;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05);
+                .big-folder-badge {
+                    position: absolute; top: -12px; right: -12px; background: #f89e35;
+                    color: white; width: 44px; height: 44px; border-radius: 50%;
+                    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20;
+                    box-shadow: 0 8px 20px rgba(248,158,53,0.4); border: 3px solid white;
+                    font-size: 14px; font-weight: 900;
                 }
+                .big-folder-badge span { font-size: 9px; font-weight: 700; margin-top: -3px; opacity: 0.8; text-transform: uppercase; }
 
-                .masonry-item img { width: 100%; display: block; border-radius: 20px; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-                .photo-wrapper { overflow: hidden; border-radius: 20px; position: relative; z-index: 2; height: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+                .masonry-item img { width: 100%; display: block; border-radius: 20px; transition: transform 0.6s cubic-bezier(0.2, 0, 0.2, 1); }
+                .photo-wrapper { overflow: hidden; border-radius: 20px; position: relative; z-index: 5; height: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.06); background: white; }
                 
-                .masonry-item:hover .photo-wrapper img { transform: scale(1.05); }
+                .masonry-item:hover .photo-wrapper img { transform: scale(1.08) translateY(-4px); }
                 
-                .masonry-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(15,23,42,0.8) 0%, transparent 60%); opacity: 0; transition: opacity 0.4s; border-radius: 20px; display: flex; flex-direction: column; justify-content: flex-end; padding: 24px; z-index: 3; }
-                .masonry-item:hover .masonry-overlay { opacity: 1; }
-                .masonry-title { color: white; font-weight: 800; font-size: 16px; margin-bottom: 6px; letter-spacing: -0.5px; }
-                .masonry-desc { color: rgba(255,255,255,0.8); font-size: 13px; font-weight: 500; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+                /* Make title and description ALWAYS visible at bottom of card */
+                .masonry-info { padding: 16px 18px 20px; background: white; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; border: 1px solid #f1f5f9; border-top: none; }
+                .masonry-title { color: #0f172a; font-weight: 900; font-size: 17px; margin-bottom: 4px; letter-spacing: -0.5px; line-height: 1.2; }
+                .masonry-desc { color: #64748b; font-size: 13px; font-weight: 500; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
                 
-                .zoom-icon { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all 0.3s; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.1); color: #0f172a; }
+                .zoom-icon { position: absolute; top: 12px; left: 12px; width: 32px; height: 32px; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all 0.3s; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.1); color: #0f172a; }
                 .masonry-item:hover .zoom-icon { opacity: 1; transform: scale(1); }
                 .zoom-icon:hover { background: #f89e35; color: white; }
 
@@ -154,18 +154,26 @@ export default function GalleryPage() {
                                 >
                                     <div className="photo-wrapper">
                                         {isFolder && (
-                                            <div className="folder-badge">
-                                                <Layers size={12} className="text-[#f89e35]" />
-                                                <span>{item.images.length}</span>
+                                            <>
+                                                <div className="folder-base"></div>
+                                                <div className="folder-back"></div>
+                                                <div className="big-folder-badge">
+                                                    +{item.images.length}
+                                                    <span>Shots</span>
+                                                </div>
+                                            </>
+                                        )}
+                                        <div className="overflow-hidden rounded-t-[20px]">
+                                            <img src={item.image} alt={item.title || `Gallery ${idx + 1}`} loading="lazy" />
+                                        </div>
+                                        {(item.title || item.description) && (
+                                            <div className="masonry-info">
+                                                {item.title && <div className="masonry-title">{item.title}</div>}
+                                                {item.description && <div className="masonry-desc">{item.description}</div>}
                                             </div>
                                         )}
-                                        <img src={item.image} alt={item.title || `Gallery ${idx + 1}`} loading="lazy" />
-                                        <div className="masonry-overlay">
-                                            {item.title && <div className="masonry-title">{item.title}</div>}
-                                            {item.description && <div className="masonry-desc">{item.description}</div>}
-                                        </div>
+                                        <div className="zoom-icon"><ZoomIn size={16} /></div>
                                     </div>
-                                    <div className="zoom-icon"><ZoomIn size={18} /></div>
                                 </motion.div>
                             );
                         })}

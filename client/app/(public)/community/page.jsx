@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
     Briefcase, Shield, Search, X, MapPin, Clock, ChevronDown, CheckCircle, Send, Globe, 
-    AlertTriangle, MessageCircle, Heart, Eye, Phone, Mail, BadgeCheck, Camera, Image as ImageIcon, Loader2, Link as LinkIcon
+    AlertTriangle, MessageCircle, Heart, Eye, Phone, Mail, BadgeCheck, Camera, Image as ImageIcon, Loader2, Link as LinkIcon,
+    FileText, Music, Film
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
@@ -55,6 +56,11 @@ export default function CommunityPage() {
     const [authorInputs, setAuthorInputs] = useState({});
     const [commentImageFiles, setCommentImageFiles] = useState({});
     const [likedScams, setLikedScams] = useState({});
+
+    // Upload Previews
+    const [scamImagePreview, setScamImagePreview] = useState('');
+    const [jobLogoPreview, setJobLogoPreview] = useState('');
+    const [commentImagePreviews, setCommentImagePreviews] = useState({});
 
     // File Input Refs
     const scamFileRef = useRef(null);
@@ -154,10 +160,19 @@ export default function CommunityPage() {
             if (res.ok) {
                 setSubmitted(true);
                 setScamForm({ title: '', description: '', author: '', category: 'SMS Scam', imageFile: null, imageUrl: '' });
+                setScamImagePreview('');
                 setTimeout(() => { setShowSubmitModal(false); setSubmitted(false); fetchData(); }, 3500);
             }
         } catch (e) {}
         setSubmitting(false);
+    };
+
+    const getFileType = (file) => {
+        if (!file) return 'image';
+        if (file.type.startsWith('image/')) return 'image';
+        if (file.type.startsWith('video/')) return 'video';
+        if (file.type.startsWith('audio/')) return 'audio';
+        return 'file';
     };
 
     const submitComment = async (scamId) => {
@@ -166,7 +181,11 @@ export default function CommunityPage() {
         if (!content && !file) return;
         
         let uploadedUrl = '';
-        if (file) uploadedUrl = await handleFileUpload(file);
+        let fileType = 'image';
+        if (file) {
+            uploadedUrl = await handleFileUpload(file);
+            fileType = getFileType(file);
+        }
 
         try {
             const res = await fetch(`${API_BASE_URL}/comments`, {
@@ -176,8 +195,9 @@ export default function CommunityPage() {
                     postId: scamId, 
                     postType: 'scam', 
                     author: authorInputs[scamId]?.trim() || 'Visitor', 
-                    content: content || 'Image attached',
-                    image: uploadedUrl 
+                    content: content || `Shared a ${fileType}`,
+                    image: uploadedUrl,
+                    fileType: fileType
                 }),
             });
             if (res.ok) {
@@ -186,6 +206,7 @@ export default function CommunityPage() {
                 setCommentInputs(prev => ({ ...prev, [scamId]: '' }));
                 setAuthorInputs(prev => ({ ...prev, [scamId]: '' }));
                 setCommentImageFiles(prev => ({ ...prev, [scamId]: null }));
+                setCommentImagePreviews(prev => ({ ...prev, [scamId]: '' }));
             }
         } catch (e) {}
     };
@@ -223,6 +244,7 @@ export default function CommunityPage() {
                     location: 'Remote', salary: '', posterName: '', contactEmail: '', contactWebsite: '', phone: '',
                     companyLogoFile: null, companyLogoUrl: ''
                 });
+                setJobLogoPreview('');
                 setTimeout(() => { setShowSubmitModal(false); setSubmitted(false); fetchData(); }, 3000);
             }
         } catch (e) {}
@@ -619,6 +641,11 @@ export default function CommunityPage() {
                                         </div>
                                     </div>
                                     <p className="text-slate-800 text-sm leading-relaxed font-medium">{activeScamModal.adminReply}</p>
+                                    {activeScamModal.adminReplyImage && (
+                                        <div className="mt-4 rounded-xl overflow-hidden border border-[#f89e35]/20 shadow-sm bg-white">
+                                            <img src={activeScamModal.adminReplyImage} alt="Official Evidence" className="w-full h-auto max-h-[300px] object-contain mx-auto" />
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -632,20 +659,46 @@ export default function CommunityPage() {
                                     <input className="w-full text-sm font-medium mb-3 pb-3 border-b border-slate-100 focus:outline-none" placeholder="Your name (optional)" value={authorInputs[activeScamModal._id] || ''} onChange={e => setAuthorInputs(p => ({ ...p, [activeScamModal._id]: e.target.value }))} />
                                     <textarea className="w-full text-sm resize-y min-h-[60px] focus:outline-none pt-1" placeholder="Share what you know or ask a question..." value={commentInputs[activeScamModal._id] || ''} onChange={e => setCommentInputs(p => ({ ...p, [activeScamModal._id]: e.target.value }))} />
                                     
-                                    {commentImageFiles[activeScamModal._id] && (
-                                        <div className="mt-2 mb-2 relative inline-block">
-                                            <div className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-2 font-medium">
-                                                <ImageIcon size={12}/> {commentImageFiles[activeScamModal._id].name}
+                                    {commentImagePreviews[activeScamModal._id] && (
+                                        <div className="mt-2 mb-2 relative inline-block group">
+                                            <div className="relative rounded-xl overflow-hidden border-2 border-[#f89e35] bg-white shadow-md">
+                                                {commentImageFiles[activeScamModal._id]?.type?.startsWith('image/') ? (
+                                                    <img src={commentImagePreviews[activeScamModal._id]} className="h-24 w-auto object-contain" alt="Preview" />
+                                                ) : (
+                                                    <div className="h-24 px-6 flex items-center gap-3 bg-slate-50 min-w-[200px]">
+                                                        {commentImageFiles[activeScamModal._id]?.type?.startsWith('video/') ? <Film className="text-[#f89e35]" size={24}/> :
+                                                         commentImageFiles[activeScamModal._id]?.type?.startsWith('audio/') ? <Music className="text-[#f89e35]" size={24}/> :
+                                                         <FileText className="text-[#f89e35]" size={24}/>}
+                                                        <div className="text-left">
+                                                            <div className="text-[10px] font-black uppercase text-slate-400">File Selected</div>
+                                                            <div className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{commentImageFiles[activeScamModal._id]?.name}</div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <button 
+                                                    onClick={() => {
+                                                        setCommentImageFiles(p => ({...p, [activeScamModal._id]: null}));
+                                                        setCommentImagePreviews(p => ({...p, [activeScamModal._id]: ''}));
+                                                    }} 
+                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-600 transition-colors"
+                                                >
+                                                    <X size={12} strokeWidth={3} />
+                                                </button>
                                             </div>
-                                            <button onClick={() => setCommentImageFiles(p => ({...p, [activeScamModal._id]: null}))} className="absolute -top-2 -right-2 bg-slate-800 text-white rounded-full p-0.5"><X size={10}/></button>
                                         </div>
                                     )}
 
                                     <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
                                         <div>
-                                            <input type="file" id={`comment-img-${activeScamModal._id}`} accept="image/*" className="hidden" onChange={e => { if(e.target.files[0]) setCommentImageFiles(p => ({...p, [activeScamModal._id]: e.target.files[0]})); }} />
-                                            <button onClick={() => document.getElementById(`comment-img-${activeScamModal._id}`).click()} className="text-slate-400 hover:text-[#f89e35] transition-colors p-2 bg-slate-50 rounded-full">
-                                                <Camera size={16} />
+                                            <input type="file" id={`comment-img-${activeScamModal._id}`} accept="image/*,video/*,audio/*,application/pdf" className="hidden" onChange={e => { 
+                                                const file = e.target.files[0];
+                                                if(file) {
+                                                    setCommentImageFiles(p => ({...p, [activeScamModal._id]: file}));
+                                                    setCommentImagePreviews(p => ({...p, [activeScamModal._id]: URL.createObjectURL(file)}));
+                                                }
+                                            }} />
+                                            <button onClick={() => document.getElementById(`comment-img-${activeScamModal._id}`).click()} className={`text-slate-400 hover:text-[#f89e35] transition-colors p-2 bg-slate-50 rounded-full ${commentImageFiles[activeScamModal._id] ? 'bg-orange-50 text-[#f89e35]' : ''}`}>
+                                                <LinkIcon size={16} />
                                             </button>
                                         </div>
                                         <LoadingButton
@@ -672,8 +725,22 @@ export default function CommunityPage() {
                                                 </div>
                                                 <p className="text-slate-700 text-sm leading-relaxed">{c.content}</p>
                                                 {c.image && (
-                                                    <div className="mt-3 rounded-xl overflow-hidden border border-slate-200">
-                                                        <img src={c.image} alt="Comment Attachment" className="w-full max-h-48 object-cover" />
+                                                    <div className="mt-3 rounded-xl overflow-hidden border border-slate-200 bg-white">
+                                                        {c.fileType === 'video' ? (
+                                                            <video src={c.image} controls className="w-full max-h-[360px] bg-black" />
+                                                        ) : c.fileType === 'audio' ? (
+                                                            <audio src={c.image} controls className="w-full mt-2" />
+                                                        ) : c.fileType === 'file' ? (
+                                                            <a href={c.image} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-slate-100 transition">
+                                                                <FileText size={24} className="text-[#f89e35]" />
+                                                                <div className="text-left">
+                                                                    <div className="text-xs font-bold text-slate-700">Download Attachment</div>
+                                                                    <div className="text-[10px] text-slate-400">Click to open or download file</div>
+                                                                </div>
+                                                            </a>
+                                                        ) : (
+                                                            <img src={c.image} alt="Comment Attachment" className="w-full max-h-[320px] object-contain" />
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -736,12 +803,24 @@ export default function CommunityPage() {
                                         </div>
                                         <div>
                                             <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">Evidence Image (Optional)</label>
-                                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-[#f89e35] transition-colors cursor-pointer bg-slate-50" onClick={() => scamFileRef.current.click()}>
-                                                <input type="file" ref={scamFileRef} className="hidden" accept="image/*" onChange={e => { if(e.target.files[0]) setScamForm({...scamForm, imageFile: e.target.files[0]}); }} />
-                                                {scamForm.imageFile ? (
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <CheckCircle className="text-emerald-500" size={24}/>
-                                                        <span className="text-sm font-bold text-slate-700">{scamForm.imageFile.name}</span>
+                                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-[#f89e35] transition-colors cursor-pointer bg-slate-50 relative group" onClick={() => scamFileRef.current.click()}>
+                                                <input type="file" ref={scamFileRef} className="hidden" accept="image/*" onChange={e => { 
+                                                    const file = e.target.files[0];
+                                                    if(file) {
+                                                        setScamForm({...scamForm, imageFile: file});
+                                                        setScamImagePreview(URL.createObjectURL(file));
+                                                    }
+                                                }} />
+                                                
+                                                {scamImagePreview ? (
+                                                    <div className="relative inline-block mx-auto">
+                                                        <img src={scamImagePreview} className="max-h-40 rounded-lg shadow-md border-2 border-white" alt="Preview" />
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setScamForm({...scamForm, imageFile: null}); setScamImagePreview(''); }} 
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100"
+                                                        >
+                                                            <X size={14} strokeWidth={3} />
+                                                        </button>
                                                     </div>
                                                 ) : (
                                                     <div className="flex flex-col items-center gap-2">
@@ -792,10 +871,23 @@ export default function CommunityPage() {
                                             </div>
                                             <div>
                                                 <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">Company Logo (Optional)</label>
-                                                <div className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-5 py-2.5 rounded-xl font-medium focus:outline-none hover:border-[#f89e35] cursor-pointer flex items-center gap-2" onClick={() => jobLogoRef.current.click()}>
-                                                    <input type="file" ref={jobLogoRef} className="hidden" accept="image/*" onChange={e => { if(e.target.files[0]) setJobForm({...jobForm, companyLogoFile: e.target.files[0]}); }} />
-                                                    <ImageIcon size={16} className="text-slate-400" />
-                                                    <span className="text-sm truncate">{jobForm.companyLogoFile ? jobForm.companyLogoFile.name : 'Choose Logo Image'}</span>
+                                                <div className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-5 py-2.5 rounded-xl font-medium focus:outline-none hover:border-[#f89e35] cursor-pointer flex items-center justify-between gap-2 overflow-hidden" onClick={() => jobLogoRef.current.click()}>
+                                                    <input type="file" ref={jobLogoRef} className="hidden" accept="image/*" onChange={e => { 
+                                                        const file = e.target.files[0];
+                                                        if(file) {
+                                                            setJobForm({...jobForm, companyLogoFile: file});
+                                                            setJobLogoPreview(URL.createObjectURL(file));
+                                                        }
+                                                    }} />
+                                                    <div className="flex items-center gap-2 truncate">
+                                                        <ImageIcon size={16} className="text-slate-400" />
+                                                        <span className="text-sm truncate">{jobForm.companyLogoFile ? jobForm.companyLogoFile.name : 'Choose Logo Image'}</span>
+                                                    </div>
+                                                    {jobLogoPreview && (
+                                                        <div className="relative h-8 w-8 rounded overflow-hidden border border-slate-200 shrink-0">
+                                                            <img src={jobLogoPreview} className="w-full h-full object-cover" alt="Logo preview" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

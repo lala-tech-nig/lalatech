@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/api';
+import LoadingButton from '@/components/LoadingButton';
+import { Camera, Image as ImageIcon, X as XIcon, FileText, Music, Film, Link as LinkIcon, Send, MessageCircle } from 'lucide-react';
 
 const LS_LIKES_KEY = 'lalatech_liked_posts';
 const LS_SAVED_KEY = 'lalatech_saved_posts';
@@ -27,6 +29,9 @@ export default function SingleFeedPost() {
     const [replyInputs, setReplyInputs] = useState({});
     const [replyAuthors, setReplyAuthors] = useState({});
     const [expandedReplies, setExpandedReplies] = useState({});
+    const [commentImageFile, setCommentImageFile] = useState(null);
+    const [commentImagePreview, setCommentImagePreview] = useState('');
+    const [imageUploading, setImageUploading] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -83,21 +88,64 @@ export default function SingleFeedPost() {
         setPost(p => ({ ...p, shares: (p.shares || 0) + 1 }));
     };
 
+    const getFileType = (file) => {
+        if (!file) return 'image';
+        if (file.type.startsWith('image/')) return 'image';
+        if (file.type.startsWith('video/')) return 'video';
+        if (file.type.startsWith('audio/')) return 'audio';
+        return 'file';
+    };
+
+    const handleFileUpload = async (file) => {
+        if (!file) return null;
+        setImageUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const uploadEndpoint = `${API_BASE_URL.replace('/api', '')}/api/upload`;
+            const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+            if (res.ok) {
+                const data = await res.json();
+                setImageUploading(false);
+                return data.secure_url || data.url; 
+            }
+        } catch(e) { console.error(e); }
+        setImageUploading(false);
+        return null;
+    };
+
     const submitComment = async () => {
         const content = commentInput.trim();
-        if (!content) return;
+        if (!content && !commentImageFile) return;
         setSubmitting(true);
+        
+        let uploadedUrl = '';
+        let fileType = 'image';
+        if (commentImageFile) {
+            uploadedUrl = await handleFileUpload(commentImageFile);
+            fileType = getFileType(commentImageFile);
+        }
+
         try {
             const res = await fetch(`${API_BASE_URL}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postId: id, postType: 'post', author: authorInput.trim() || 'Visitor', content }),
+                body: JSON.stringify({ 
+                    postId: id, 
+                    postType: 'post', 
+                    author: authorInput.trim() || 'Visitor', 
+                    content: content || (uploadedUrl ? `Shared a ${fileType}` : ''),
+                    image: uploadedUrl,
+                    fileType: fileType
+                }),
             });
             if (res.ok) {
                 const nc = await res.json();
                 setComments(prev => [nc, ...prev]);
                 setCommentInput('');
                 setAuthorInput('');
+                setCommentImageFile(null);
+                setCommentImagePreview('');
             }
         } catch {}
         setSubmitting(false);
@@ -162,6 +210,11 @@ export default function SingleFeedPost() {
                 .c-send { padding: 11px 16px; background: linear-gradient(135deg, #f89e35, #f56e00); border: none; border-radius: 12px; color: white; cursor: pointer; transition: transform 0.15s; flex-shrink: 0; display: flex; align-items: center; }
                 .c-send:hover { transform: scale(1.06); }
                 .c-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+                .c-preview-box { margin-top: 10px; position: relative; display: inline-block; }
+                .c-preview-img { height: 100px; width: auto; border-radius: 12px; border: 2px solid #f89e35; object-fit: contain; background: white; box-shadow: 0 4px 12px rgba(248,158,53,0.15); }
+                .c-preview-remove { position: absolute; -top: 8px; -right: 8px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; items-center; justify-content: center; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+                .comment-img-display { margin-top: 10px; border-radius: 12px; overflow: hidden; border: 1px solid #f1f5f9; background: white; max-width: 100%; display: flex; justify-content: center; }
+                .comment-img-display img { max-height: 320px; width: auto; max-width: 100%; object-fit: contain; }
                 .comment-item { display: flex; gap: 12px; margin-bottom: 18px; }
                 .c-av { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: white; }
                 .c-body-wrap { flex: 1; }
@@ -259,10 +312,47 @@ export default function SingleFeedPost() {
                                 <input className="c-name" placeholder="Your name (optional)" value={authorInput} onChange={e => setAuthorInput(e.target.value)} />
                                 <div className="c-row">
                                     <textarea className="c-text" placeholder="Share your thoughts..." rows={2} value={commentInput} onChange={e => setCommentInput(e.target.value)} />
-                                    <button className="c-send" disabled={submitting || !commentInput.trim()} onClick={submitComment}>
-                                        <Send size={16} />
-                                    </button>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <input type="file" id="comment-file" accept="image/*,video/*,audio/*,application/pdf" className="hidden" onChange={e => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                setCommentImageFile(file);
+                                                setCommentImagePreview(URL.createObjectURL(file));
+                                            }
+                                        }} />
+                                        <button className={`c-send ${commentImageFile ? 'bg-orange-50 text-[#f89e35]' : ''}`} style={{ background: 'white', border: '1.5px solid #e2e8f0', color: '#64748b' }} onClick={() => document.getElementById('comment-file').click()}>
+                                            <LinkIcon size={16} />
+                                        </button>
+                                        <LoadingButton 
+                                            loading={submitting || imageUploading} 
+                                            disabled={!commentInput.trim() && !commentImageFile} 
+                                            onClick={submitComment}
+                                            className="c-send"
+                                        >
+                                            <Send size={16} />
+                                        </LoadingButton>
+                                    </div>
                                 </div>
+                                {commentImagePreview && (
+                                    <div className="c-preview-box">
+                                        {commentImageFile?.type?.startsWith('image/') ? (
+                                            <img src={commentImagePreview} className="c-preview-img" alt="Preview" />
+                                        ) : (
+                                            <div className="h-[100px] px-6 flex items-center gap-3 bg-slate-50 min-w-[200px] border-2 border-[#f89e35] rounded-xl shadow-sm">
+                                                {commentImageFile?.type?.startsWith('video/') ? <Film className="text-[#f89e35]" size={24}/> :
+                                                 commentImageFile?.type?.startsWith('audio/') ? <Music className="text-[#f89e35]" size={24}/> :
+                                                 <FileText className="text-[#f89e35]" size={24}/>}
+                                                <div className="text-left">
+                                                    <div className="text-[10px] font-black uppercase text-slate-400">File Selected</div>
+                                                    <div className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{commentImageFile?.name}</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="c-preview-remove" onClick={() => { setCommentImageFile(null); setCommentImagePreview(''); }}>
+                                            <XIcon size={12} strokeWidth={3} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {comments.length === 0 ? (
@@ -286,6 +376,25 @@ export default function SingleFeedPost() {
                                                                     <span className="c-time">{formatDate(comment.createdAt)}</span>
                                                                 </div>
                                                                 <p className="c-text-body">{comment.content}</p>
+                                                                {comment.image && (
+                                                                    <div className="comment-img-display">
+                                                                        {comment.fileType === 'video' ? (
+                                                                            <video src={comment.image} controls className="w-full max-h-[360px] bg-black" />
+                                                                        ) : comment.fileType === 'audio' ? (
+                                                                            <audio src={comment.image} controls className="w-full mt-2" />
+                                                                        ) : comment.fileType === 'file' ? (
+                                                                            <a href={comment.image} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-slate-100 transition rounded-xl w-full">
+                                                                                <FileText size={24} className="text-[#f89e35]" />
+                                                                                <div className="text-left">
+                                                                                    <div className="text-xs font-bold text-slate-700">Download Attachment</div>
+                                                                                    <div className="text-[10px] text-slate-400">Click to open or download file</div>
+                                                                                </div>
+                                                                            </a>
+                                                                        ) : (
+                                                                            <img src={comment.image} alt="Attachment" />
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <button className="c-reply-btn" onClick={() => setReplyingTo(p => ({ ...p, [comment._id]: !p[comment._id] }))}>
                                                                 <MessageCircle size={13} /> Reply
