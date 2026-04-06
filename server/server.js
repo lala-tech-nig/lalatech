@@ -22,6 +22,8 @@ const commentRoutes = require('./routes/commentRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const threeDRoutes = require('./routes/threeDRoutes');
 const authRoutes = require('./routes/authRoutes');
+const scamRoutes = require('./routes/scamRoutes');
+const galleryRoutes = require('./routes/galleryRoutes');
 const path = require('path');
 
 
@@ -35,16 +37,24 @@ const jwt = require('jsonwebtoken');
 
 // Global Auth Middleware for admin requests
 app.use((req, res, next) => {
-    const publicMutableRoutes = [
-        '/api/auth/login',         // Admin login
-        '/api/contacts',           // Contact form
-        '/api/applications',       // Job app form
-        '/api/comments',           // Public comments
-        '/api/service-requests'    // Service requests
+    // Routes that are allowed to skip authentication for specific non-GET methods
+    const publicMutations = [
+        { path: '/api/auth/login', method: 'POST' },
+        { path: '/api/contacts', method: 'POST' },
+        { path: '/api/applications', method: 'POST' },
+        { path: '/api/comments', method: 'POST' },
+        { path: '/api/service-requests', method: 'POST' },
+        { path: '/api/jobs', method: 'POST' },
+        { path: '/api/scams', method: 'POST' },
+        { path: '/api/upload', method: 'POST' }
     ];
 
+    const isPublicMutation = publicMutations.some(p => 
+        req.path.startsWith(p.path) && req.method === p.method
+    );
+
     // If it's a mutation request (POST/PUT/DELETE) and not in the public list -> verify token
-    if (req.method !== 'GET' && !publicMutableRoutes.some(p => req.path.startsWith(p))) {
+    if (req.method !== 'GET' && !isPublicMutation) {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ message: 'Unauthorized: No token provided' });
@@ -86,6 +96,8 @@ app.use('/api/tools', toolRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/3d', threeDRoutes);
+app.use('/api/scams', scamRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 
 // Serve static files from uploads folder

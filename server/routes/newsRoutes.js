@@ -30,7 +30,7 @@ router.get('/slug/:slug', async (req, res) => {
         const article = await News.findOneAndUpdate(
             { slug: req.params.slug, published: true },
             { $inc: { views: 1 } },
-            { new: true }
+            { returnDocument: 'after' }
         );
         if (!article) return res.status(404).json({ message: 'Not found' });
         res.json(article);
@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
 // PUT update news
 router.put('/:id', async (req, res) => {
     try {
-        const updated = await News.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updated = await News.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
         res.json(updated);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -84,7 +84,7 @@ router.put('/:id', async (req, res) => {
 // POST like
 router.post('/:id/like', async (req, res) => {
     try {
-        const article = await News.findByIdAndUpdate(req.params.id, { $inc: { likes: 1 } }, { new: true });
+        const article = await News.findByIdAndUpdate(req.params.id, { $inc: { likes: 1 } }, { returnDocument: 'after' });
         res.json(article);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -92,7 +92,7 @@ router.post('/:id/like', async (req, res) => {
 // POST share
 router.post('/:id/share', async (req, res) => {
     try {
-        const article = await News.findByIdAndUpdate(req.params.id, { $inc: { shares: 1 } }, { new: true });
+        const article = await News.findByIdAndUpdate(req.params.id, { $inc: { shares: 1 } }, { returnDocument: 'after' });
         res.json(article);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -103,7 +103,7 @@ router.post('/admin/set-news-of-day/:id', async (req, res) => {
         // First unset all
         await News.updateMany({}, { isNewsOfDay: false });
         // Set new one
-        const article = await News.findByIdAndUpdate(req.params.id, { isNewsOfDay: true }, { new: true });
+        const article = await News.findByIdAndUpdate(req.params.id, { isNewsOfDay: true }, { returnDocument: 'after' });
         res.json(article);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });

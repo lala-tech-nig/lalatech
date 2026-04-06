@@ -12,6 +12,17 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Get single post by ID
+router.get('/:id', async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) return res.status(404).json({ message: 'Not found' });
+        res.json(post);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Create post
 router.post('/', async (req, res) => {
     const post = new Post({

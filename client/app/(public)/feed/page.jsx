@@ -1,9 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, TrendingUp, Send, ChevronDown, X, Search } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, TrendingUp, Send, ChevronDown, X, Search, Link2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '@/lib/api';
+
+const LS_LIKES_KEY = 'lalatech_liked_posts';
+const LS_SAVED_KEY = 'lalatech_saved_posts';
+
+function getLSItem(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
+}
+function setLSItem(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
 
 export default function FeedPage() {
     const [posts, setPosts] = useState([]);
@@ -18,10 +28,17 @@ export default function FeedPage() {
     const [replyInputs, setReplyInputs] = useState({});
     const [replyAuthors, setReplyAuthors] = useState({});
     const [expandedReplies, setExpandedReplies] = useState({});
-    const [submitting, setSubmitting] = useState(false);
+    const [submittingComments, setSubmittingComments] = useState({});
+    const [submittingReplies, setSubmittingReplies] = useState({});
     const [search, setSearch] = useState('');
+    const [copiedId, setCopiedId] = useState(null);
 
-    useEffect(() => { fetchPosts(); }, []);
+    useEffect(() => {
+        // Load liked/saved from localStorage
+        setLikedPosts(getLSItem(LS_LIKES_KEY));
+        setSavedPosts(getLSItem(LS_SAVED_KEY));
+        fetchPosts();
+    }, []);
 
     const fetchPosts = async () => {
         try {
@@ -31,7 +48,7 @@ export default function FeedPage() {
         finally { setLoading(false); }
     };
 
-    const filteredPosts = posts.filter(p => 
+    const filteredPosts = posts.filter(p =>
         (p.content || '').toLowerCase().includes(search.toLowerCase())
     );
 
@@ -56,25 +73,37 @@ export default function FeedPage() {
 
     const handleLike = async (id) => {
         if (likedPosts[id]) return;
-        setLikedPosts(prev => ({ ...prev, [id]: true }));
+        const updated = { ...likedPosts, [id]: true };
+        setLikedPosts(updated);
+        setLSItem(LS_LIKES_KEY, updated);
         setPosts(posts.map(p => p._id === id ? { ...p, likes: p.likes + 1 } : p));
         await fetch(`${API_BASE_URL}/posts/${id}/like`, { method: 'POST' }).catch(() => {});
     };
 
+    const handleSave = (id) => {
+        const updated = { ...savedPosts, [id]: !savedPosts[id] };
+        setSavedPosts(updated);
+        setLSItem(LS_SAVED_KEY, updated);
+    };
+
     const handleShare = async (id, text) => {
+        const postUrl = `${window.location.origin}/feed/${id}`;
         setPosts(posts.map(p => p._id === id ? { ...p, shares: p.shares + 1 } : p));
         await fetch(`${API_BASE_URL}/posts/${id}/share`, { method: 'POST' }).catch(() => {});
+
         if (navigator.share) {
-            navigator.share({ title: 'Lala Tech', text, url: window.location.href }).catch(() => {});
+            navigator.share({ title: 'Lala Tech Feed', text: text?.substring(0, 100) || 'Check this out!', url: postUrl }).catch(() => {});
         } else {
-            await navigator.clipboard.writeText(window.location.href).catch(() => {});
+            await navigator.clipboard.writeText(postUrl).catch(() => {});
+            setCopiedId(id);
+            setTimeout(() => setCopiedId(null), 2000);
         }
     };
 
     const submitComment = async (postId) => {
         const content = commentInputs[postId]?.trim();
-        if (!content) return;
-        setSubmitting(true);
+        if (!content || submittingComments[postId]) return;
+        setSubmittingComments(p => ({ ...p, [postId]: true }));
         try {
             const res = await fetch(`${API_BASE_URL}/comments`, {
                 method: 'POST',
@@ -93,13 +122,13 @@ export default function FeedPage() {
                 setAuthorInputs(prev => ({ ...prev, [postId]: '' }));
             }
         } catch (e) {}
-        setSubmitting(false);
+        setSubmittingComments(p => ({ ...p, [postId]: false }));
     };
 
     const submitReply = async (postId, commentId) => {
         const content = replyInputs[commentId]?.trim();
-        if (!content) return;
-        setSubmitting(true);
+        if (!content || submittingReplies[commentId]) return;
+        setSubmittingReplies(p => ({ ...p, [commentId]: true }));
         try {
             const res = await fetch(`${API_BASE_URL}/comments`, {
                 method: 'POST',
@@ -121,7 +150,7 @@ export default function FeedPage() {
                 setExpandedReplies(prev => ({ ...prev, [commentId]: true }));
             }
         } catch (e) {}
-        setSubmitting(false);
+        setSubmittingReplies(p => ({ ...p, [commentId]: false }));
     };
 
     const likeComment = async (postId, commentId) => {
@@ -175,6 +204,11 @@ export default function FeedPage() {
                 .action-btn.liked:hover { background: #fef2f2; }
                 .action-btn.saved { color: #f89e35; }
                 .action-btn.active-comment { color: #f89e35; background: #fff7ed; }
+                .action-btn.copied { color: #10b981; background: #f0fdf4; }
+
+                /* Deep link button */
+                .post-link-btn { display: block; text-align: center; margin: 0 20px 16px; padding: 8px; border-radius: 12px; background: #f8fafc; border: 1.5px dashed #e2e8f0; color: #94a3b8; font-size: 12px; font-weight: 600; text-decoration: none; transition: all 0.15s; cursor: pointer; }
+                .post-link-btn:hover { background: #fff7ed; border-color: #f89e35; color: #f89e35; }
 
                 /* Comments section */
                 .comments-panel { border-top: 1px solid #f1f5f9; background: #fafafa; }
@@ -204,24 +238,22 @@ export default function FeedPage() {
                 .no-comments { text-align: center; padding: 24px 16px; color: #94a3b8; font-size: 14px; font-weight: 600; }
 
                 /* SearchBar */
-                .feed-search {
-                    max-width: 100%; margin: 24px 0;
-                    display: flex; align-items: center;
-                    background: white; border-radius: 100px; border: 1.5px solid #e2e8f0;
-                    padding: 10px 18px; gap: 10px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-                    transition: border-color 0.2s;
-                }
+                .feed-search { max-width: 100%; margin: 24px 0; display: flex; align-items: center; background: white; border-radius: 100px; border: 1.5px solid #e2e8f0; padding: 10px 18px; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); transition: border-color 0.2s; }
                 .feed-search:focus-within { border-color: #f89e35; }
                 .feed-search input { flex: 1; border: none; outline: none; font-size: 15px; font-weight: 500; color: #0f172a; background: transparent; }
+
+                /* Skeleton */
+                .skeleton-card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 24px; border: 1px solid #f1f5f9; }
+                .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; }
+                @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
             `}</style>
 
             <div className="feed-container">
                 <div className="feed-header">
                     <div className="feed-badge"><TrendingUp size={11} /> Live Feed</div>
                     <h1 className="feed-title">Lala's Feed</h1>
-                    <p className="feed-subtitle">Updates, thoughts & moments from Lala Tech</p>
-                    
+                    <p className="feed-subtitle">Updates, thoughts &amp; moments from Lala Tech</p>
+
                     <div className="feed-search">
                         <Search size={18} color="#94a3b8" />
                         <input
@@ -230,6 +262,7 @@ export default function FeedPage() {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
+                        {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex' }}><X size={16} /></button>}
                     </div>
                 </div>
                 <hr className="feed-divider" />
@@ -264,6 +297,9 @@ export default function FeedPage() {
                         {filteredPosts.map((post, idx) => {
                             const postComments = comments[post._id] || [];
                             const isCommenting = activeCommentPost === post._id;
+                            const isLiked = !!likedPosts[post._id];
+                            const isSaved = !!savedPosts[post._id];
+                            const isCopied = copiedId === post._id;
                             return (
                                 <motion.div key={post._id} className="post-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
                                     {/* Header */}
@@ -275,7 +311,9 @@ export default function FeedPage() {
                                                 <div className="author-tag">@lalatech · {formatDate(post.createdAt)}</div>
                                             </div>
                                         </div>
-                                        <MoreHorizontal size={18} color="#94a3b8" style={{ cursor: 'pointer' }} />
+                                        <a href={`/feed/${post._id}`} title="View post" style={{ color: '#94a3b8', display: 'flex' }} onClick={e => e.stopPropagation()}>
+                                            <MoreHorizontal size={18} style={{ cursor: 'pointer' }} />
+                                        </a>
                                     </div>
 
                                     {/* Content */}
@@ -295,21 +333,29 @@ export default function FeedPage() {
                                     {/* Actions */}
                                     <div className="post-actions">
                                         <div className="action-group">
-                                            <button className={`action-btn ${likedPosts[post._id] ? 'liked' : ''}`} onClick={() => handleLike(post._id)}>
-                                                <Heart size={18} fill={likedPosts[post._id] ? '#ef4444' : 'none'} />
+                                            <button
+                                                className={`action-btn ${isLiked ? 'liked' : ''}`}
+                                                onClick={() => handleLike(post._id)}
+                                                title={isLiked ? 'Already liked' : 'Like'}
+                                            >
+                                                <Heart size={18} fill={isLiked ? '#ef4444' : 'none'} />
                                                 {post.likes > 0 && post.likes}
                                             </button>
                                             <button className={`action-btn ${isCommenting ? 'active-comment' : ''}`} onClick={() => toggleComments(post._id)}>
                                                 <MessageCircle size={18} />
                                                 {postComments.length > 0 && postComments.length}
                                             </button>
-                                            <button className="action-btn" onClick={() => handleShare(post._id, post.content)}>
-                                                <Share2 size={18} />
-                                                {post.shares > 0 && post.shares}
+                                            <button
+                                                className={`action-btn ${isCopied ? 'copied' : ''}`}
+                                                onClick={() => handleShare(post._id, post.content)}
+                                                title="Share post link"
+                                            >
+                                                {isCopied ? <Check size={18} /> : <Share2 size={18} />}
+                                                {isCopied ? 'Copied!' : (post.shares > 0 ? post.shares : '')}
                                             </button>
                                         </div>
-                                        <button className={`action-btn ${savedPosts[post._id] ? 'saved' : ''}`} onClick={() => setSavedPosts(p => ({ ...p, [post._id]: !p[post._id] }))}>
-                                            <Bookmark size={18} fill={savedPosts[post._id] ? '#f89e35' : 'none'} />
+                                        <button className={`action-btn ${isSaved ? 'saved' : ''}`} onClick={() => handleSave(post._id)} title={isSaved ? 'Unsave' : 'Save'}>
+                                            <Bookmark size={18} fill={isSaved ? '#f89e35' : 'none'} />
                                         </button>
                                     </div>
 
@@ -333,7 +379,11 @@ export default function FeedPage() {
                                                             onChange={e => setCommentInputs(p => ({ ...p, [post._id]: e.target.value }))}
                                                             rows={2}
                                                         />
-                                                        <button className="c-send-btn" disabled={submitting || !commentInputs[post._id]?.trim()} onClick={() => submitComment(post._id)}>
+                                                        <button
+                                                            className="c-send-btn"
+                                                            disabled={submittingComments[post._id] || !commentInputs[post._id]?.trim()}
+                                                            onClick={() => submitComment(post._id)}
+                                                        >
                                                             <Send size={16} />
                                                         </button>
                                                     </div>
@@ -344,7 +394,6 @@ export default function FeedPage() {
                                                     {postComments.length === 0 ? (
                                                         <div className="no-comments">No comments yet. Be the first! 👇</div>
                                                     ) : (
-                                                        // Recursive Comment Tree
                                                         (() => {
                                                             const all = comments[post._id] || [];
                                                             const renderTree = (parentId = null, depth = 0) => {
@@ -409,7 +458,11 @@ export default function FeedPage() {
                                                                                                     onChange={e => setReplyInputs({ ...replyInputs, [comment._id]: e.target.value })}
                                                                                                     rows={2}
                                                                                                 />
-                                                                                                <button className="c-send-btn" disabled={submitting || !replyInputs[comment._id]?.trim()} onClick={() => submitReply(post._id, comment._id)}>
+                                                                                                <button
+                                                                                                    className="c-send-btn"
+                                                                                                    disabled={submittingReplies[comment._id] || !replyInputs[comment._id]?.trim()}
+                                                                                                    onClick={() => submitReply(post._id, comment._id)}
+                                                                                                >
                                                                                                     <Send size={14} />
                                                                                                 </button>
                                                                                             </div>

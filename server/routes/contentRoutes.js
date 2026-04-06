@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
         const content = await Content.findOneAndUpdate(
             { section },
             { text },
-            { new: true, upsert: true }
+            { returnDocument: 'after', upsert: true }
         );
         res.json(content);
     } catch (err) {

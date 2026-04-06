@@ -1,11 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2, Box, ArrowRight } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2, Box, ArrowRight, Shield, Camera, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import API_BASE_URL, { BASE_URL } from '@/lib/api';
+import LoadingButton from '@/components/LoadingButton';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar, Cell
@@ -109,6 +110,18 @@ export default function AdminDashboard() {
     const [feedComments, setFeedComments] = useState({});
     const [adminReplies, setAdminReplies] = useState({});
     const [activeFeedComments, setActiveFeedComments] = useState(null);
+
+    // New tabs state
+    const [pendingJobs, setPendingJobs] = useState([]);
+    const [allJobs, setAllJobs] = useState([]);
+    const [activeAdminJobPreview, setActiveAdminJobPreview] = useState(null);
+    const [scams, setScams] = useState([]);
+    const [galleryItems, setGalleryItems] = useState([]);
+    const [newGalleryItem, setNewGalleryItem] = useState({ image: '', images: [], title: '', description: '' });
+    const [galleryPreview, setGalleryPreview] = useState('');
+    const [scamAdminReplies, setScamAdminReplies] = useState({});
+    const [scamComments, setScamComments] = useState({});
+    const [activeScamComments, setActiveScamComments] = useState(null);
 
     // Dynamic Categories State
     const [categories, setCategories] = useState({
@@ -277,6 +290,22 @@ export default function AdminDashboard() {
             } else if (activeTab === 'threed') {
                 const res = await fetch(`${API_BASE_URL}/3d`);
                 if (res.ok) setThreeDPosts(await res.json());
+            } else if (activeTab === 'jobs-review') {
+                const [allRes, pendRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/jobs?all=true`),
+                    fetch(`${API_BASE_URL}/jobs?all=true`)
+                ]);
+                if (allRes.ok) {
+                    const all = await allRes.json();
+                    setAllJobs(all);
+                    setPendingJobs(all.filter(j => j.status === 'pending'));
+                }
+            } else if (activeTab === 'scam-admin') {
+                const res = await fetch(`${API_BASE_URL}/scams`);
+                if (res.ok) setScams(await res.json());
+            } else if (activeTab === 'gallery-admin') {
+                const res = await fetch(`${API_BASE_URL}/gallery`);
+                if (res.ok) setGalleryItems(await res.json());
             }
         } catch (err) {
             toast.error('Failed to load data');
@@ -682,6 +711,9 @@ export default function AdminDashboard() {
                                         { id: 'feed', icon: Rss, label: 'Feed Manager' },
                                         { id: 'news', icon: TrendingUp, label: 'News Manager' },
                                         { id: 'threed', icon: Box, label: '3D Models' },
+                                        { id: 'jobs-review', icon: CheckCircle, label: 'Job Listings' },
+                                        { id: 'scam-admin', icon: Shield, label: 'Scam Reports' },
+                                        { id: 'gallery-admin', icon: Camera, label: 'Gallery Manager' },
                                         { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
                                         { id: 'careers', icon: Users, label: 'Careers' },
                                         { id: 'messages', icon: MessageSquare, label: 'Messages' },
@@ -1571,11 +1603,25 @@ export default function AdminDashboard() {
                             <div className="grid gap-6 max-w-2xl">
                                 {feedPosts.map(p => (
                                     <div key={p._id} className="bg-white border text-left rounded-3xl p-6 relative group shadow-sm hover:shadow-md transition">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-600">L</div>
-                                            <div>
-                                                <div className="font-bold text-slate-900">Lala Tech</div>
-                                                <div className="text-xs font-semibold text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</div>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-600">L</div>
+                                                <div>
+                                                    <div className="font-bold text-slate-900">Lala Tech</div>
+                                                    <div className="text-xs font-semibold text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</div>
+                                                </div>
+                                            </div>
+                                            {/* Engagement stats */}
+                                            <div className="flex items-center gap-3 text-xs font-bold">
+                                                <span className="flex items-center gap-1 text-red-400 bg-red-50 px-2 py-1 rounded-full">
+                                                    <Heart className="w-3.5 h-3.5" fill="currentColor" /> {p.likes || 0}
+                                                </span>
+                                                <span className="flex items-center gap-1 text-slate-400 bg-slate-50 px-2 py-1 rounded-full">
+                                                    <Share2 className="w-3.5 h-3.5" /> {p.shares || 0}
+                                                </span>
+                                                <a href={`/feed/${p._id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#f89e35] bg-orange-50 px-2 py-1 rounded-full hover:bg-orange-100">
+                                                    <Eye className="w-3.5 h-3.5" /> View
+                                                </a>
                                             </div>
                                         </div>
                                         {p.content && <p className="mb-4 text-slate-700 whitespace-pre-wrap">{p.content}</p>}
@@ -1621,12 +1667,13 @@ export default function AdminDashboard() {
                                                                                     onChange={e => setAdminReplies({ ...adminReplies, [comment._id]: e.target.value })}
                                                                                     className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#f89e35]"
                                                                                 />
-                                                                                <button 
+                                                                                <LoadingButton 
                                                                                     onClick={() => sendAdminReply(comment._id, p._id)}
-                                                                                    className="bg-[#f89e35] text-white p-1.5 rounded-lg hover:bg-orange-600 transition"
+                                                                                    className="bg-[#f89e35] text-white p-1.5 rounded-lg hover:bg-orange-600"
+                                                                                    showSpinner={false}
                                                                                 >
                                                                                     <Reply className="w-3.5 h-3.5" />
-                                                                                </button>
+                                                                                </LoadingButton>
                                                                             </div>
 
                                                                             {/* Recursive children */}
@@ -1641,9 +1688,346 @@ export default function AdminDashboard() {
                                                 )}
                                             </AnimatePresence>
                                         </div>
-                                        <button onClick={() => deleteFeedPost(p._id)} className="absolute top-6 right-6 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-5 h-5" /></button>
+                                        <LoadingButton
+                                            onClick={() => deleteFeedPost(p._id)}
+                                            className="absolute top-6 right-6 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"
+                                            showSpinner={false}
+                                        ><Trash2 className="w-5 h-5" /></LoadingButton>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'jobs-review' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Job Listings</h1>
+                            <p className="text-slate-500 font-medium mb-8">Review public job submissions and approve or reject them.</p>
+
+                            <div className="flex gap-4 mb-6">
+                                <div className="bg-white border rounded-2xl px-5 py-3 flex items-center gap-3">
+                                    <Clock className="w-5 h-5 text-amber-500" />
+                                    <div><div className="text-xl font-black text-slate-900">{allJobs.filter(j => j.status === 'pending').length}</div><div className="text-xs text-slate-400 font-bold uppercase tracking-wide">Pending</div></div>
+                                </div>
+                                <div className="bg-white border rounded-2xl px-5 py-3 flex items-center gap-3">
+                                    <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                    <div><div className="text-xl font-black text-slate-900">{allJobs.filter(j => j.status === 'approved').length}</div><div className="text-xs text-slate-400 font-bold uppercase tracking-wide">Approved</div></div>
+                                </div>
+                                <div className="bg-white border rounded-2xl px-5 py-3 flex items-center gap-3">
+                                    <XCircle className="w-5 h-5 text-red-400" />
+                                    <div><div className="text-xl font-black text-slate-900">{allJobs.filter(j => j.status === 'rejected').length}</div><div className="text-xs text-slate-400 font-bold uppercase tracking-wide">Rejected</div></div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 max-w-4xl">
+                                {allJobs.map(job => (
+                                    <div key={job._id} className="bg-white border rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-4 shadow-sm hover:shadow-md transition overflow-hidden">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-4 mt-1">
+                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                                    job.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                                                    job.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                                                    'bg-amber-100 text-amber-700'
+                                                }`}>{job.status || 'pending'}</span>
+                                                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{job.type}</span>
+                                                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{job.location}</span>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-4 mb-3">
+                                                {job.companyLogo ? (
+                                                    <img src={job.companyLogo} className="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0" alt="logo" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#f89e35] to-[#f56e00] flex items-center justify-center text-white font-black text-lg flex-shrink-0">{(job.company || job.title || 'J')[0].toUpperCase()}</div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <h4 className="font-black text-slate-900 text-lg leading-tight truncate">{job.title}</h4>
+                                                    <p className="text-sm text-slate-500 font-bold truncate">{job.company}</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-slate-600 line-clamp-3 break-words overflow-hidden">{job.description}</p>
+                                        </div>
+                                        <div className="flex md:flex-col gap-2 items-start md:items-end justify-end flex-shrink-0">
+                                            <button onClick={() => setActiveAdminJobPreview(job)} className="flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black px-4 py-2 rounded-xl transition w-full md:w-auto">
+                                                <Eye className="w-3.5 h-3.5" /> Preview Look
+                                            </button>
+                                            {job.status !== 'approved' && (
+                                                <LoadingButton
+                                                    onClick={async () => {
+                                                        await fetch(`${API_BASE_URL}/jobs/${job._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) });
+                                                        toast.success('Job approved!');
+                                                        fetchData();
+                                                    }}
+                                                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black px-4 py-2 rounded-xl"
+                                                ><CheckCircle className="w-3.5 h-3.5" /> Approve</LoadingButton>
+                                            )}
+                                            {job.status !== 'rejected' && (
+                                                <LoadingButton
+                                                    onClick={async () => {
+                                                        await fetch(`${API_BASE_URL}/jobs/${job._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) });
+                                                        toast.success('Job rejected');
+                                                        fetchData();
+                                                    }}
+                                                    className="flex items-center gap-1.5 bg-red-100 hover:bg-red-200 text-red-600 text-xs font-black px-4 py-2 rounded-xl"
+                                                ><XCircle className="w-3.5 h-3.5" /> Reject</LoadingButton>
+                                            )}
+                                            <LoadingButton
+                                                onClick={async () => { if (!confirm('Delete this job?')) return; await fetch(`${API_BASE_URL}/jobs/${job._id}`, { method: 'DELETE' }); toast.success('Deleted'); fetchData(); }}
+                                                className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50"
+                                                showSpinner={false}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </LoadingButton>
+                                        </div>
+                                    </div>
+                                ))}
+                                {allJobs.length === 0 && !loading && (
+                                    <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+                                        <Briefcase className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                        <p className="text-slate-400 font-bold">No job submissions yet.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Job Preview Modal */}
+                            <AnimatePresence>
+                                {activeAdminJobPreview && (
+                                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                        <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setActiveAdminJobPreview(null)} />
+                                        <motion.div initial={{scale:0.95, opacity:0, y:20}} animate={{scale:1, opacity:1, y:0}} exit={{scale:0.95, opacity:0, y:20}} className="bg-white p-8 md:p-10 rounded-[32px] w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl scrollbar-hide text-left">
+                                            <button className="absolute top-6 right-6 p-2 bg-slate-50 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors" onClick={() => setActiveAdminJobPreview(null)}>
+                                                <X size={20} />
+                                            </button>
+
+                                            <div className="flex items-center gap-6 mb-6">
+                                                {activeAdminJobPreview.companyLogo ? (
+                                                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-100 shadow-sm">
+                                                        <img src={activeAdminJobPreview.companyLogo} alt={activeAdminJobPreview.company} className="w-full h-full object-cover" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#f89e35] to-[#f56e00] text-white flex items-center justify-center text-2xl font-black shadow-sm">
+                                                        {(activeAdminJobPreview.company || activeAdminJobPreview.title || 'J')[0].toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <h2 className="text-2xl font-black text-slate-900 mb-1">{activeAdminJobPreview.title}</h2>
+                                                    <p className="text-slate-600 font-bold flex items-center gap-2">
+                                                        {activeAdminJobPreview.company}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex flex-wrap gap-2 mb-6">
+                                                <span className="inline-flex items-center bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1 rounded-full text-xs font-bold uppercase">{activeAdminJobPreview.type}</span>
+                                                <span className="inline-flex items-center bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1 rounded-full text-xs font-bold uppercase">{activeAdminJobPreview.location}</span>
+                                                {activeAdminJobPreview.salary && (
+                                                    <span className="inline-flex items-center bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">
+                                                        💰 {activeAdminJobPreview.salary}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap break-words mb-6">{activeAdminJobPreview.description}</p>
+                                            
+                                            {activeAdminJobPreview.requirements && (
+                                                <div className="mb-6">
+                                                    <h5 className="font-black text-slate-900 text-sm mb-2">Requirements</h5>
+                                                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap break-words">{activeAdminJobPreview.requirements}</p>
+                                                </div>
+                                            )}
+
+                                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6">
+                                                <div className="grid grid-cols-2 gap-4 text-sm font-medium text-slate-600">
+                                                    <div><span className="text-slate-400 block text-xs uppercase font-bold mb-1">Posted By</span> {activeAdminJobPreview.posterName || 'Not specified'}</div>
+                                                    <div><span className="text-slate-400 block text-xs uppercase font-bold mb-1">Phone</span> {activeAdminJobPreview.phone || 'N/A'}</div>
+                                                    <div><span className="text-slate-400 block text-xs uppercase font-bold mb-1">Email</span> {activeAdminJobPreview.contactEmail || 'N/A'}</div>
+                                                    <div className="truncate"><span className="text-slate-400 block text-xs uppercase font-bold mb-1">Website</span> {activeAdminJobPreview.contactWebsite || 'N/A'}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                                                <button onClick={() => setActiveAdminJobPreview(null)} className="px-5 py-2 font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">
+                                                    Close Preview
+                                                </button>
+                                                {activeAdminJobPreview.status !== 'approved' && (
+                                                    <LoadingButton
+                                                        onClick={async () => {
+                                                            await fetch(`${API_BASE_URL}/jobs/${activeAdminJobPreview._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) });
+                                                            toast.success('Job approved!');
+                                                            setActiveAdminJobPreview(null);
+                                                            fetchData();
+                                                        }}
+                                                        className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-sm flex items-center gap-1.5"
+                                                    >
+                                                        <CheckCircle size={16}/> Approve
+                                                    </LoadingButton>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                )}
+                            </AnimatePresence>
+
+                        </div>
+                    )}
+
+                    {activeTab === 'scam-admin' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Scam Reports</h1>
+                            <p className="text-slate-500 font-medium mb-8">Review community scam reports and add official Lala Tech responses.</p>
+
+                            <div className="space-y-4">
+                                {scams.map(scam => (
+                                    <div key={scam._id} className="bg-white border rounded-3xl p-6 shadow-sm hover:shadow-md transition">
+                                        <div className="flex items-start justify-between gap-4 mb-3">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-[10px] font-black uppercase bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{scam.category || 'General'}</span>
+                                                    <span className="text-[10px] text-slate-400">By {scam.author || 'Anonymous'}</span>
+                                                    <span className="text-[10px] text-slate-300">{new Date(scam.createdAt).toLocaleDateString()}</span>
+                                                </div>
+                                                <h4 className="font-black text-slate-900 text-base mb-1">{scam.title}</h4>
+                                                <p className="text-sm text-slate-600 line-clamp-3">{scam.description}</p>
+                                                <div className="flex gap-3 mt-2 text-xs font-bold text-slate-400">
+                                                    <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {scam.likes || 0}</span>
+                                                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {scam.views || 0}</span>
+                                                </div>
+                                            </div>
+                                            <LoadingButton
+                                                onClick={async () => { if (!confirm('Delete this report?')) return; await fetch(`${API_BASE_URL}/scams/${scam._id}`, { method: 'DELETE' }); toast.success('Report deleted'); fetchData(); }}
+                                                className="text-slate-200 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 flex-shrink-0"
+                                                showSpinner={false}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </LoadingButton>
+                                        </div>
+
+                                        {/* Official Reply */}
+                                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-4 mt-4">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#f89e35] to-[#f56e00] flex items-center justify-center text-white text-[10px] font-black">LT</div>
+                                                <span className="text-xs font-black text-[#f89e35] uppercase tracking-wide">Official Lala Tech Reply</span>
+                                            </div>
+                                            {scam.adminReply && (
+                                                <p className="text-sm text-slate-700 mb-3 italic">Current: "{scam.adminReply}"</p>
+                                            )}
+                                            <div className="flex gap-2">
+                                                <input type="text" placeholder="Add or update official response..." value={scamAdminReplies[scam._id] || ''} onChange={e => setScamAdminReplies(p => ({ ...p, [scam._id]: e.target.value }))} className="flex-1 bg-white border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#f89e35]" />
+                                                <LoadingButton
+                                                    onClick={async () => {
+                                                        const text = scamAdminReplies[scam._id]?.trim();
+                                                        if (!text) return;
+                                                        await fetch(`${API_BASE_URL}/scams/${scam._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminReply: text }) });
+                                                        toast.success('Official reply saved!');
+                                                        setScamAdminReplies(p => ({ ...p, [scam._id]: '' }));
+                                                        fetchData();
+                                                    }}
+                                                    className="bg-[#f89e35] hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5"
+                                                >
+                                                    <Send className="w-3.5 h-3.5" /> Save
+                                                </LoadingButton>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {scams.length === 0 && !loading && (
+                                    <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+                                        <Shield className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                        <p className="text-slate-400 font-bold">No scam reports submitted yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'gallery-admin' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Gallery Manager</h1>
+                            <p className="text-slate-500 font-medium mb-8">Upload and manage photos for the public gallery page.</p>
+
+                            <div className="bg-white p-6 md:p-8 rounded-3xl border mb-10 max-w-2xl shadow-sm hover:shadow-md transition">
+                                <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2"><Plus className="w-5 h-5 text-[#f89e35]" /> Add New Photo</h3>
+                                <div className="space-y-4">
+                                    <input type="text" placeholder="Photo Title (optional)" value={newGalleryItem.title} onChange={e => setNewGalleryItem({ ...newGalleryItem, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
+                                    <input type="text" placeholder="Description (optional)" value={newGalleryItem.description} onChange={e => setNewGalleryItem({ ...newGalleryItem, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35]" />
+                                    <div className="relative group">
+                                        <input type="file" multiple accept="image/*" onChange={async (e) => {
+                                            const files = Array.from(e.target.files);
+                                            if (!files.length) return;
+                                            setUploading(true);
+                                            try {
+                                                const uploadEndpoint = `${API_BASE_URL.replace('/api', '')}/api/upload`;
+                                                const urls = [];
+                                                for (const file of files) {
+                                                    const formData = new FormData();
+                                                    formData.append('file', file);
+                                                    const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+                                                    const data = await res.json();
+                                                    if (data.url) urls.push(data.url);
+                                                }
+                                                if (urls.length > 0) {
+                                                    setNewGalleryItem(p => ({ ...p, image: urls[0], images: urls }));
+                                                    setGalleryPreview(urls[0]);
+                                                    toast.success(`${urls.length} photo(s) uploaded!`);
+                                                }
+                                            } catch(err) {
+                                                toast.error('Upload failed');
+                                            } finally {
+                                                setUploading(false);
+                                            }
+                                        }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                        {galleryPreview ? (
+                                            <div className="relative">
+                                                <img src={galleryPreview} alt="Preview" className="w-full h-56 object-cover rounded-xl border border-slate-200" />
+                                                {newGalleryItem.images?.length > 1 && (
+                                                    <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                                                        + {newGalleryItem.images.length - 1} More
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center text-white font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Click to change'}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full py-12 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center gap-2 justify-center text-slate-400 font-bold bg-white group-hover:text-[#f89e35] group-hover:border-[#f89e35] transition-all">
+                                                {uploading ? <Loader2 className="w-6 h-6 animate-spin text-[#f89e35]" /> : <Camera className="w-8 h-8" />}
+                                                <span>Upload Photo(s)</span>
+                                                <span className="text-[11px] font-normal">JPG, PNG, WebP</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        disabled={uploading || !newGalleryItem.image}
+                                        onClick={async () => {
+                                            if (!newGalleryItem.image) return;
+                                            await fetch(`${API_BASE_URL}/gallery`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGalleryItem) });
+                                            toast.success('Added to gallery!');
+                                            setNewGalleryItem({ image: '', images: [], title: '', description: '' });
+                                            setGalleryPreview('');
+                                            fetchData();
+                                        }}
+                                        className="w-full bg-[#110f0e] disabled:opacity-50 text-white py-3 rounded-xl font-black hover:bg-slate-800 transition"
+                                    >Add to Gallery</button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {galleryItems.map(item => (
+                                    <div key={item._id} className="relative group rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition">
+                                        <img src={item.image} alt={item.title || 'Gallery'} className="w-full aspect-square object-cover" />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex flex-col justify-end p-3">
+                                            {item.title && <p className="text-white font-bold text-xs opacity-0 group-hover:opacity-100 transition mb-1">{item.title}</p>}
+                                            <button onClick={async () => { if (!confirm('Delete photo?')) return; await fetch(`${API_BASE_URL}/gallery/${item._id}`, { method: 'DELETE' }); toast.success('Photo deleted'); fetchData(); }} className="opacity-0 group-hover:opacity-100 w-full bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1">
+                                                <Trash2 className="w-3 h-3" /> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {galleryItems.length === 0 && !loading && (
+                                    <div className="col-span-full text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+                                        <Camera className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                        <p className="text-slate-400 font-bold">Gallery is empty. Upload your first photo!</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

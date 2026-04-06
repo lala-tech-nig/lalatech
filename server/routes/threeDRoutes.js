@@ -80,7 +80,7 @@ router.put('/:id', async (req, res) => {
         const updatedPost = await ThreeDPost.findByIdAndUpdate(
             req.params.id,
             { $set: req.body },
-            { new: true }
+            { returnDocument: 'after' }
         );
         if (!updatedPost) return res.status(404).json({ message: 'Post not found' });
         res.json(updatedPost);
