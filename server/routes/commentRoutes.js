@@ -20,6 +20,8 @@ router.post('/', async (req, res) => {
             author: req.body.author || 'Anonymous',
             content: req.body.content,
             isAdmin: req.body.isAdmin || false,
+            image: req.body.image || req.body.imageUrl || '',
+            fileType: req.body.fileType || 'image',
         });
         const saved = await comment.save();
         res.status(201).json(saved);

@@ -153,12 +153,31 @@ export default function SingleFeedPost() {
 
     const submitReply = async (commentId) => {
         const content = replyInputs[commentId]?.trim();
-        if (!content) return;
+        const file = commentImageFile; // For simplicity, using same state for now, but usually should be per-comment
+        if (!content && !file) return;
+        
+        setSubmitting(true);
+        let uploadedUrl = '';
+        let fileType = 'image';
+        
+        if (file) {
+            uploadedUrl = await handleFileUpload(file);
+            fileType = getFileType(file);
+        }
+
         try {
             const res = await fetch(`${API_BASE_URL}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postId: id, postType: 'post', parentId: commentId, author: replyAuthors[commentId]?.trim() || 'Visitor', content }),
+                body: JSON.stringify({ 
+                    postId: id, 
+                    postType: 'post', 
+                    parentId: commentId, 
+                    author: replyAuthors[commentId]?.trim() || 'Visitor', 
+                    content: content || `Shared a ${fileType}`,
+                    image: uploadedUrl,
+                    fileType: fileType
+                }),
             });
             if (res.ok) {
                 const nr = await res.json();
@@ -166,8 +185,11 @@ export default function SingleFeedPost() {
                 setReplyInputs(p => ({ ...p, [commentId]: '' }));
                 setReplyingTo(p => ({ ...p, [commentId]: false }));
                 setExpandedReplies(p => ({ ...p, [commentId]: true }));
+                setCommentImageFile(null);
+                setCommentImagePreview('');
             }
         } catch {}
+        setSubmitting(false);
     };
 
     const formatDate = (d) => {
@@ -405,9 +427,20 @@ export default function SingleFeedPost() {
                                                                         <input className="c-name" style={{ marginBottom: 8 }} placeholder="Your name" value={replyAuthors[comment._id] || ''} onChange={e => setReplyAuthors(p => ({ ...p, [comment._id]: e.target.value }))} />
                                                                         <div className="c-row">
                                                                             <textarea className="c-text" placeholder={`Reply to ${comment.author || 'Anonymous'}...`} rows={2} value={replyInputs[comment._id] || ''} onChange={e => setReplyInputs(p => ({ ...p, [comment._id]: e.target.value }))} />
-                                                                            <button className="c-send" onClick={() => submitReply(comment._id)}>
-                                                                                <Send size={14} />
-                                                                            </button>
+                                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                                                <button className={`c-send ${commentImageFile ? 'bg-orange-50 text-[#f89e35]' : ''}`} style={{ background: 'white', border: '1.5px solid #e2e8f0', color: '#64748b', padding: '8px 12px' }} onClick={() => document.getElementById('comment-file').click()}>
+                                                                                    <LinkIcon size={14} />
+                                                                                </button>
+                                                                                <LoadingButton 
+                                                                                    loading={submitting || imageUploading} 
+                                                                                    disabled={!replyInputs[comment._id]?.trim() && !commentImageFile} 
+                                                                                    onClick={() => submitReply(comment._id)} 
+                                                                                    className="c-send"
+                                                                                    style={{ padding: '8px 12px' }}
+                                                                                >
+                                                                                    <Send size={14} />
+                                                                                </LoadingButton>
+                                                                            </div>
                                                                         </div>
                                                                     </motion.div>
                                                                 )}
