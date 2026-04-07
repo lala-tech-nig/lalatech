@@ -1,12 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share2, ArrowLeft, TrendingUp, Send, ChevronDown, Check, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share2, ArrowLeft, TrendingUp, Send, ChevronDown, Check, Bookmark, Camera, Image as ImageIcon, X as XIcon, FileText, Music, Film, Link as LinkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/api';
 import LoadingButton from '@/components/LoadingButton';
-import { Camera, Image as ImageIcon, X as XIcon, FileText, Music, Film, Link as LinkIcon, Send, MessageCircle } from 'lucide-react';
 
 const LS_LIKES_KEY = 'lalatech_liked_posts';
 const LS_SAVED_KEY = 'lalatech_saved_posts';
