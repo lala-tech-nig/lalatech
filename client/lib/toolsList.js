@@ -226,5 +226,17 @@ export const toolsList = [
     "category": "Repair Tools",
     "desc": "Test hardware components like screen, keyboard, audio, and sensors",
     "slug": "hardware-diagnostics"
+  },
+  {
+    "name": "Moving Video Watermark",
+    "category": "Video Tools",
+    "desc": "Add a dynamic bouncing or floating logo watermark to your videos completely in your browser.",
+    "slug": "video-watermark"
+  },
+  {
+    "name": "Social Video Downloader",
+    "category": "Video Tools",
+    "desc": "Download videos instantly from YouTube, TikTok, Instagram, and Twitter/X completely free.",
+    "slug": "video-downloader"
   }
 ];

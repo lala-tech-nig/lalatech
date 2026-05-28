@@ -46,7 +46,10 @@ app.use((req, res, next) => {
         { path: '/api/service-requests', method: 'POST' },
         { path: '/api/jobs', method: 'POST' },
         { path: '/api/scams', method: 'POST' },
-        { path: '/api/upload', method: 'POST' }
+        { path: '/api/upload', method: 'POST' },
+        { path: '/api/stats/increment', method: 'POST' },
+        { path: '/api/analytics/track', method: 'POST' },
+        { path: '/api/tools/download-video', method: 'POST' }
     ];
 
     const isPublicMutation = publicMutations.some(p => 
@@ -112,7 +115,7 @@ mongoose.connect(process.env.MONGODB_URI)
         console.log('Connected to MongoDB');
         app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
-        });
+        }).setTimeout(10 * 60 * 1000); // 10-minute timeout for large video streams
     })
     .catch((err) => {
         console.error('MongoDB connection error:', err);

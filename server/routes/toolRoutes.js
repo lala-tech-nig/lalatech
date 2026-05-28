@@ -265,4 +265,125 @@ router.post('/process', upload.array('files', 20), async (req, res) => {
     }
 });
 
+router.post('/download-video', async (req, res) => {
+    try {
+        const { url, format = 'mp4', quality = '720' } = req.body;
+        if (!url) {
+            return res.status(400).json({ message: 'URL is required.' });
+        }
+
+        const isYouTube = /(youtube\.com|youtu\.be)/i.test(url);
+        const filename = `lalatech-download-${Date.now()}.${format === 'mp3' ? 'mp3' : 'mp4'}`;
+
+        // ── Engine 1: @distube/ytdl-core for YouTube (fastest, no subprocess) ──
+        if (isYouTube) {
+            try {
+                const ytdl = require('@distube/ytdl-core');
+
+                if (!ytdl.validateURL(url)) {
+                    return res.status(400).json({ message: 'Invalid YouTube URL provided.' });
+                }
+
+                const info = await ytdl.getInfo(url);
+
+                if (format === 'mp3') {
+                    // Stream highest quality audio only
+                    res.setHeader('Content-Type', 'audio/mpeg');
+                    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+                    ytdl(url, { quality: 'highestaudio', filter: 'audioonly' }).pipe(res);
+                } else {
+                    // Try to get video+audio combined at requested quality
+                    const qualityLabel = `${quality}p`;
+                    let chosenFormat = null;
+
+                    // Prefer combined video+audio stream
+                    const combined = info.formats.filter(f =>
+                        f.hasVideo && f.hasAudio && f.qualityLabel &&
+                        parseInt(f.qualityLabel) <= parseInt(quality)
+                    ).sort((a, b) => parseInt(b.qualityLabel) - parseInt(a.qualityLabel));
+
+                    if (combined.length > 0) {
+                        chosenFormat = combined[0];
+                    }
+
+                    res.setHeader('Content-Type', 'video/mp4');
+                    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+                    const dlOptions = chosenFormat
+                        ? { format: chosenFormat }
+                        : { quality: 'highest', filter: 'videoandaudio' };
+
+                    ytdl(url, dlOptions)
+                        .on('error', (err) => {
+                            console.error('ytdl stream error:', err.message);
+                            if (!res.headersSent) res.status(500).json({ message: 'Video stream interrupted.' });
+                        })
+                        .pipe(res);
+                }
+                return; // ytdl handled it
+            } catch (ytdlErr) {
+                console.warn('ytdl-core failed for YouTube, falling back to yt-dlp-exec:', ytdlErr.message);
+                // Fall through to yt-dlp-exec engine below
+            }
+        }
+
+        // ── Engine 2: yt-dlp-exec — handles ALL platforms (TikTok, Instagram, Twitter/X, Facebook, YouTube fallback) ──
+        const ytDlpExec = require('yt-dlp-exec');
+
+        const ytdlpArgs = {
+            noCheckCertificates: true,
+            noWarnings: true,
+            preferFreeFormats: true,
+            addHeader: [
+                'referer:youtube.com',
+                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ],
+            output: '-', // pipe to stdout
+        };
+
+        if (format === 'mp3') {
+            ytdlpArgs.extractAudio = true;
+            ytdlpArgs.audioFormat = 'mp3';
+            ytdlpArgs.audioQuality = 0; // best
+        } else {
+            // Select best video at or below requested quality, fallback to best available
+            ytdlpArgs.format = `bestvideo[height<=${quality}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${quality}]+bestaudio/best[height<=${quality}]/best`;
+            ytdlpArgs.mergeOutputFormat = 'mp4';
+        }
+
+        console.log(`Resolving with yt-dlp-exec: ${url} | format=${format} | quality=${quality}p`);
+
+        res.setHeader('Content-Type', format === 'mp3' ? 'audio/mpeg' : 'video/mp4');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        const subprocess = ytDlpExec.exec(url, ytdlpArgs);
+
+        subprocess.stdout.pipe(res);
+
+        let stderrLog = '';
+        subprocess.stderr.on('data', (chunk) => {
+            stderrLog += chunk.toString();
+        });
+
+        subprocess.on('error', (err) => {
+            console.error('yt-dlp-exec process error:', err.message);
+            if (!res.headersSent) {
+                res.status(500).json({ message: 'Video download engine failed to start. The URL may be unsupported.' });
+            }
+        });
+
+        subprocess.on('close', (code) => {
+            if (code !== 0) {
+                console.error(`yt-dlp-exec exited with code ${code}. stderr:`, stderrLog.substring(0, 500));
+            }
+        });
+
+    } catch (error) {
+        console.error('Downloader route error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Server error: ' + (error.message || 'Unknown failure.') });
+        }
+    }
+});
+
 module.exports = router;

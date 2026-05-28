@@ -10,7 +10,7 @@ export default function Footer() {
 
                     <div className="md:col-span-2">
                         <Link href="/" className="flex items-center gap-3 mb-6">
-                            <Image src="/bglogo.png" alt="Lala Tech Logo" width={60} height={60} className="object-contain" />
+                            <Image src="/bglogo.png" alt="Lala Tech Logo" width={60} height={60} className="object-contain" style={{ width: 'auto', height: 'auto' }} />
                             <span className="text-xl font-black text-slate-900 tracking-wide uppercase">LALA TECH</span>
                         </Link>
                         <p className="text-slate-600 font-medium leading-relaxed max-w-md">
