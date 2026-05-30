@@ -1,7 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2, Box, ArrowRight, Shield, Camera, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Briefcase, LogOut, Loader2, Trash2, Plus, Users, Wrench, Menu, X, Megaphone, Activity, ShoppingBag, Youtube, Rss, Image as ImageIcon, TrendingUp, Tag, Reply, Send, Eye, Heart, Share2, Box, ArrowRight, Shield, Camera, CheckCircle, XCircle, Clock, Video, Tv, Play, Volume2, ShieldAlert } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -143,6 +144,26 @@ export default function AdminDashboard() {
     const [feedImagePreview, setFeedImagePreview] = useState('');
     const [promoMediaPreview, setPromoMediaPreview] = useState('');
     const [scamReplyImagePreviews, setScamReplyImagePreviews] = useState({});
+
+    // --- Livestream State ---
+    const [livestreams, setLivestreams] = useState([]);
+    const [streamRequests, setStreamRequests] = useState([]);
+    const [registeredViewers, setRegisteredViewers] = useState([]);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [streamTitle, setStreamTitle] = useState('');
+    const [streamDescription, setStreamDescription] = useState('');
+    const [currentStreamId, setCurrentStreamId] = useState(null);
+    const [connectedViewers, setConnectedViewers] = useState([]);
+    const [uploadingRecording, setUploadingRecording] = useState(false);
+    const [isEndModalOpen, setIsEndModalOpen] = useState(false);
+    const [localStreamRefState, setLocalStreamRefState] = useState(null);
+
+    const adminLocalVideoRef = useRef(null);
+    const adminLocalStreamRef = useRef(null);
+    const adminSocketRef = useRef(null);
+    const peerConnectionsRef = useRef({}); // { viewerSocketId: RTCPeerConnection }
+    const mediaRecorderRef = useRef(null);
+    const recordedChunksRef = useRef([]);
 
     // --- Authentication State ---
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -307,11 +328,296 @@ export default function AdminDashboard() {
             } else if (activeTab === 'gallery-admin') {
                 const res = await fetch(`${API_BASE_URL}/gallery`);
                 if (res.ok) setGalleryItems(await res.json());
+            } else if (activeTab === 'livestream-admin') {
+                const streamsRes = await fetch(`${API_BASE_URL}/streams`);
+                const viewersRes = await fetch(`${API_BASE_URL}/streams/admin/viewers`);
+                const requestsRes = await fetch(`${API_BASE_URL}/streams/admin/requests`);
+                if (streamsRes.ok) setLivestreams(await streamsRes.json());
+                if (viewersRes.ok) setRegisteredViewers(await viewersRes.json());
+                if (requestsRes.ok) setStreamRequests(await requestsRes.json());
             }
         } catch (err) {
             toast.error('Failed to load data');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // --- Start screen sharing streaming ---
+    const startScreenStream = async (e) => {
+        e.preventDefault();
+        if (!streamTitle) {
+            toast.error('Please enter a title for the stream.');
+            return;
+        }
+
+        try {
+            // Capture screen stream with audio
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    displaySurface: "monitor",
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 30 }
+                },
+                audio: true
+            });
+
+            adminLocalStreamRef.current = displayStream;
+            setLocalStreamRefState(displayStream);
+
+            // Create new stream record in MongoDB
+            const res = await fetch(`${API_BASE_URL}/streams`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: streamTitle, description: streamDescription })
+            });
+            const streamData = await res.json();
+
+            if (!res.ok) {
+                displayStream.getTracks().forEach(t => t.stop());
+                toast.error(streamData.message || 'Failed to initialize database stream.');
+                return;
+            }
+
+            setCurrentStreamId(streamData._id);
+            setIsStreaming(true);
+            setConnectedViewers([]);
+            toast.success('Livestream successfully initialized!');
+
+            // Bind stream preview to video tag
+            setTimeout(() => {
+                if (adminLocalVideoRef.current) {
+                    adminLocalVideoRef.current.srcObject = displayStream;
+                }
+            }, 300);
+
+            // Start recording in the background using MediaRecorder
+            recordedChunksRef.current = [];
+            let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm;codecs=vp8,opus' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm' };
+                }
+            }
+
+            const recorder = new MediaRecorder(displayStream, options);
+            mediaRecorderRef.current = recorder;
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    recordedChunksRef.current.push(event.data);
+                }
+            };
+            recorder.start(1000); // chunk every 1 second
+
+            // Initialize Socket.io Connection
+            const socket = io(BASE_URL);
+            adminSocketRef.current = socket;
+
+            socket.on('connect', () => {
+                console.log('Admin socket signaling connected');
+                socket.emit('join-room', { room: `stream_${streamData._id}`, role: 'admin' });
+            });
+
+            // Listen for new viewers joining the WebRTC room
+            socket.on('viewer-joined', async ({ socketId }) => {
+                console.log(`New viewer joined room: ${socketId}`);
+                setConnectedViewers(prev => [...new Set([...prev, socketId])]);
+
+                // Establish WebRTC connection for this viewer
+                const pc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                });
+                peerConnectionsRef.current[socketId] = pc;
+
+                // Add display and audio tracks to peer connection
+                displayStream.getTracks().forEach(track => {
+                    pc.addTrack(track, displayStream);
+                });
+
+                // Listen for local ICE candidates to forward to this viewer
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.emit('ice-candidate', { candidate: event.candidate, targetSocketId: socketId });
+                    }
+                };
+
+                // Create offer to send to the viewer
+                try {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    socket.emit('offer', { sdp: pc.localDescription, targetSocketId: socketId });
+                } catch (err) {
+                    console.error('Failed to create/send offer to viewer', err);
+                }
+            });
+
+            // Receive WebRTC answer from viewer
+            socket.on('answer', async ({ sdp, senderSocketId }) => {
+                console.log(`Received answer from viewer: ${senderSocketId}`);
+                const pc = peerConnectionsRef.current[senderSocketId];
+                if (pc) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                }
+            });
+
+            // Receive viewer ICE candidates
+            socket.on('ice-candidate', async ({ candidate, senderSocketId }) => {
+                const pc = peerConnectionsRef.current[senderSocketId];
+                if (pc) {
+                    try {
+                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (e) {
+                        console.error('Error adding ICE candidate from viewer', e);
+                    }
+                }
+            });
+
+            // Handle viewer disconnects
+            socket.on('peer-disconnected', ({ socketId }) => {
+                console.log(`Viewer disconnected socket: ${socketId}`);
+                setConnectedViewers(prev => prev.filter(id => id !== socketId));
+                if (peerConnectionsRef.current[socketId]) {
+                    peerConnectionsRef.current[socketId].close();
+                    delete peerConnectionsRef.current[socketId];
+                }
+            });
+
+            // Handle when screen capture is stopped natively via browser "Stop sharing" bar
+            displayStream.getVideoTracks()[0].onended = () => {
+                console.log('Screen capture stopped natively by admin.');
+                setIsEndModalOpen(true);
+            };
+
+        } catch (err) {
+            console.error(err);
+            toast.error('Screen capture cancelled or permission denied.');
+        }
+    };
+
+    // End active screen streaming
+    const endScreenStream = async (keepRewatchable) => {
+        setIsEndModalOpen(false);
+        setUploadingRecording(true);
+
+        try {
+            // Stop recorder and get video blob
+            let videoUrl = '';
+            if (keepRewatchable && mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                const blob = await new Promise((resolve) => {
+                    mediaRecorderRef.current.onstop = () => {
+                        const compiledBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+                        resolve(compiledBlob);
+                    };
+                    mediaRecorderRef.current.stop();
+                });
+
+                if (blob && blob.size > 1024) {
+                    // Upload to Cloudinary
+                    toast.loading('Saving recorded session. Uploading to Cloudinary...', { id: 'upload' });
+                    const file = new File([blob], 'stream_record.webm', { type: 'video/webm' });
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const uploadRes = await fetch(`${API_BASE_URL.replace('/api', '')}/api/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const uploadData = await uploadRes.json();
+                    
+                    if (uploadRes.ok && uploadData.url) {
+                        videoUrl = uploadData.url;
+                        toast.success('Recording saved successfully!', { id: 'upload' });
+                    } else {
+                        toast.error('Failed to upload recording to server.', { id: 'upload' });
+                    }
+                } else {
+                    toast.error('Recording file is empty or corrupted.');
+                }
+            } else if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+
+            // Cleanup WebRTC connections
+            Object.values(peerConnectionsRef.current).forEach(pc => pc.close());
+            peerConnectionsRef.current = {};
+
+            // Stop local display stream tracks
+            if (adminLocalStreamRef.current) {
+                adminLocalStreamRef.current.getTracks().forEach(track => track.stop());
+                adminLocalStreamRef.current = null;
+                setLocalStreamRefState(null);
+            }
+
+            if (adminLocalVideoRef.current) {
+                adminLocalVideoRef.current.srcObject = null;
+            }
+
+            // Disconnect socket signaling channel
+            if (adminSocketRef.current) {
+                adminSocketRef.current.disconnect();
+                adminSocketRef.current = null;
+            }
+
+            if (keepRewatchable && videoUrl) {
+                // Call End API with recording URL
+                await fetch(`${API_BASE_URL}/streams/${currentStreamId}/end`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ videoUrl, rewatchable: true })
+                });
+                toast.success('Livestream ended. Recording is now rewatchable.');
+            } else {
+                // Delete stream entirely
+                await fetch(`${API_BASE_URL}/streams/${currentStreamId}`, {
+                    method: 'DELETE'
+                });
+                toast.success('Livestream stopped and deleted entirely.');
+            }
+
+            setIsStreaming(false);
+            setCurrentStreamId(null);
+            setStreamTitle('');
+            setStreamDescription('');
+            fetchData(); // Refresh list
+
+        } catch (err) {
+            console.error('Error ending stream', err);
+            toast.error('Error occurred while stopping livestream.');
+        } finally {
+            setUploadingRecording(false);
+        }
+    };
+
+    // Dismiss stream request
+    const clearStreamRequest = async (id) => {
+        try {
+            await fetch(`${API_BASE_URL}/streams/admin/requests/${id}`, { method: 'DELETE' });
+            toast.success('Stream request dismissed.');
+            // Refresh requests list
+            const requestsRes = await fetch(`${API_BASE_URL}/streams/admin/requests`);
+            if (requestsRes.ok) setStreamRequests(await requestsRes.json());
+        } catch (err) {
+            toast.error('Failed to dismiss request.');
+        }
+    };
+
+    // Dismiss stream recording entirely
+    const deleteStreamRecord = async (id) => {
+        if (!confirm('Delete this livestream recording entirely?')) return;
+        try {
+            await fetch(`${API_BASE_URL}/streams/${id}`, { method: 'DELETE' });
+            toast.success('Recording deleted.');
+            // Refresh
+            const streamsRes = await fetch(`${API_BASE_URL}/streams`);
+            if (streamsRes.ok) setLivestreams(await streamsRes.json());
+        } catch (err) {
+            toast.error('Failed to delete recording.');
         }
     };
 
@@ -718,6 +1024,7 @@ export default function AdminDashboard() {
                                         { id: 'service-requests', icon: Wrench, label: 'Service Requests' },
                                         { id: 'careers', icon: Users, label: 'Careers' },
                                         { id: 'messages', icon: MessageSquare, label: 'Messages' },
+                                        { id: 'livestream-admin', icon: Video, label: 'Livestream Manager' },
                                     ].map(tab => (
                                         <button
                                             key={tab.id}
@@ -2176,6 +2483,280 @@ export default function AdminDashboard() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'livestream-admin' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">Livestream Manager</h1>
+                            <p className="text-slate-500 font-medium mb-8">Manage real-time WebRTC screen sharing sessions, active stream requests, and registered friends access logs.</p>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+                                {/* Left/Middle Column: Screen Share Controller */}
+                                <div className="lg:col-span-2 space-y-6">
+                                    <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm relative overflow-hidden transition hover:shadow-lg">
+                                        <h3 className="font-bold text-slate-900 text-xl mb-6 flex items-center gap-2">
+                                            <Tv className="w-5 h-5 text-[#f89e35]" /> Broadcast Control Panel
+                                        </h3>
+
+                                        {isStreaming ? (
+                                            <div className="space-y-6">
+                                                {/* Active Streaming Stats */}
+                                                <div className="bg-[#fff7ed] border border-[#ffedd5] rounded-2xl p-5 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+                                                        <span className="text-sm font-black text-[#ea580c] uppercase tracking-wider">Currently Live</span>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-xs font-bold text-slate-400 block uppercase">Viewers Syncing</span>
+                                                        <span className="text-lg font-black text-[#110f0e]">{connectedViewers.length} friends connected</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Local Screen Video Preview */}
+                                                <div className="aspect-video bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden relative shadow-inner">
+                                                    <video 
+                                                        ref={adminLocalVideoRef} 
+                                                        autoPlay 
+                                                        muted 
+                                                        playsInline 
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                    <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1.5 rounded-lg text-white text-xs font-bold flex items-center gap-1.5 backdrop-blur-sm">
+                                                        <Volume2 className="w-3.5 h-3.5 text-[#f89e35]" /> System Audio Captured
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => setIsEndModalOpen(true)}
+                                                    disabled={uploadingRecording}
+                                                    className="w-full bg-red-500 hover:bg-red-650 text-white font-black py-4 rounded-2xl transition shadow-lg shadow-red-500/10 flex items-center justify-center gap-2"
+                                                >
+                                                    {uploadingRecording ? 'Finalizing Stream...' : '✕ Stop Screen Share'}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <form onSubmit={startScreenStream} className="space-y-5">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Stream Title</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="What are you sharing? (e.g. Anime Night)" 
+                                                        value={streamTitle}
+                                                        onChange={(e) => setStreamTitle(e.target.value)}
+                                                        className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35] text-slate-900 font-bold"
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Description (Optional)</label>
+                                                    <textarea 
+                                                        placeholder="Add a custom description for your friends..." 
+                                                        value={streamDescription}
+                                                        onChange={(e) => setStreamDescription(e.target.value)}
+                                                        className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-[#f89e35] min-h-[100px] text-slate-900 font-medium"
+                                                    />
+                                                </div>
+
+                                                <button
+                                                    type="submit"
+                                                    disabled={uploadingRecording}
+                                                    className="w-full bg-[#110f0e] hover:bg-slate-800 text-white font-black py-4 rounded-2xl transition shadow-xl flex items-center justify-center gap-2"
+                                                >
+                                                    <Tv className="w-5 h-5 text-[#f89e35]" /> Start Screen Broadcast ➔
+                                                </button>
+                                            </form>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Pending Requests from Friends */}
+                                <div className="space-y-6">
+                                    <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-lg">
+                                        <h3 className="font-bold text-slate-900 text-lg mb-6 flex items-center gap-2">
+                                            <ShieldAlert className="w-5 h-5 text-[#f89e35]" /> Livestream Requests ({streamRequests.length})
+                                        </h3>
+
+                                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                                            {streamRequests.length > 0 ? (
+                                                streamRequests.map(request => (
+                                                    <div key={request._id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between gap-3 relative group">
+                                                        <div>
+                                                            <span className="text-[10px] font-black bg-white px-2 py-0.5 rounded border text-slate-450 uppercase tracking-widest">{request.viewerEmail}</span>
+                                                            <h4 className="font-black text-slate-850 text-xs mt-1.5">{request.title}</h4>
+                                                            <p className="text-[10px] text-slate-400 font-semibold mt-1">{new Date(request.createdAt).toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="flex gap-2 mt-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setStreamTitle(`Stream for ${request.viewerEmail.split('@')[0]}`);
+                                                                    setStreamDescription(`Livestream requested by ${request.viewerEmail}.`);
+                                                                    toast.success('Pre-filled stream info! Start capture above.');
+                                                                }}
+                                                                className="flex-1 bg-[#110f0e] hover:bg-slate-850 text-white font-black text-[10px] uppercase tracking-wider py-2 rounded-xl transition cursor-pointer"
+                                                            >
+                                                                Accept
+                                                            </button>
+                                                            <button
+                                                                onClick={() => clearStreamRequest(request._id)}
+                                                                className="bg-slate-200 hover:bg-red-50 hover:text-red-505 text-slate-650 font-black text-[10px] uppercase tracking-wider px-3 py-2 rounded-xl transition cursor-pointer"
+                                                            >
+                                                                Dismiss
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-10 text-slate-450 text-sm font-medium">
+                                                    No pending livestream requests.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Registered Friends Logs & Tokens */}
+                            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden transition hover:shadow-lg mb-10">
+                                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+                                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                        <Users className="w-5 h-5 text-[#f89e35]" /> Registered Friends Access Portal ({registeredViewers.length})
+                                    </h3>
+                                    <span className="bg-white px-3 py-1 rounded-full text-[10px] font-black text-slate-450 uppercase tracking-widest border border-slate-200 shadow-sm">Lifetime tokens issued</span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    {registeredViewers.length > 0 ? (
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-slate-50/50 text-slate-400 font-bold uppercase text-[10px] tracking-widest border-b border-slate-100">
+                                                    <th className="p-6">Friend Email</th>
+                                                    <th className="p-6">Access Token</th>
+                                                    <th className="p-6 text-center">Visit Count</th>
+                                                    <th className="p-6">Visit History logs</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {registeredViewers.map(viewer => (
+                                                    <tr key={viewer._id} className="border-b border-slate-50 hover:bg-[#fff7ed]/30 transition-colors">
+                                                        <td className="p-6">
+                                                            <span className="font-black text-slate-900 text-sm block">{viewer.email}</span>
+                                                            <span className="text-[10px] text-slate-400 font-bold">Issued {new Date(viewer.createdAt).toLocaleDateString()}</span>
+                                                        </td>
+                                                        <td className="p-6 font-mono text-sm font-bold text-slate-800 uppercase tracking-wider">
+                                                            {viewer.token}
+                                                        </td>
+                                                        <td className="p-6 text-center">
+                                                            <span className="bg-[#110f0e] text-white px-3 py-1 rounded-xl text-xs font-black shadow-md">{viewer.visits?.length || 0} visits</span>
+                                                        </td>
+                                                        <td className="p-6 text-xs text-slate-500 max-w-[300px]">
+                                                            {viewer.visits && viewer.visits.length > 0 ? (
+                                                                <div className="space-y-1 max-h-[80px] overflow-y-auto pr-1">
+                                                                    {viewer.visits.map((visit, idx) => (
+                                                                        <div key={idx} className="flex justify-between gap-4 font-medium border-b border-slate-50 pb-0.5 last:border-0">
+                                                                            <span className="font-bold text-slate-700 truncate">{visit.streamTitle || 'Stream'}</span>
+                                                                            <span className="text-[9px] text-slate-400 whitespace-nowrap">{new Date(visit.date).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-slate-400 italic">No streams watched yet.</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <div className="text-center py-12 text-slate-400 text-sm font-medium">
+                                            No registered friends found. Tokens will be created when they input their emails.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Saved Rewatchable Stream Recordings Grid (Admin Delete Control) */}
+                            <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm transition hover:shadow-lg">
+                                <h3 className="font-bold text-slate-900 text-lg mb-6 flex items-center gap-2">
+                                    <Play className="w-5 h-5 text-[#f89e35]" /> Past Livestreams & Saved Recordings ({livestreams.length})
+                                </h3>
+                                <div className="space-y-4">
+                                    {livestreams.length > 0 ? (
+                                        livestreams.map(stream => (
+                                            <div key={stream._id} className="border border-slate-100 hover:border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition bg-slate-50/50">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-black text-slate-900 text-base">{stream.title}</h4>
+                                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${stream.status === 'active' ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-200 text-slate-500'}`}>
+                                                            {stream.status === 'active' ? 'LIVE' : 'ENDED'}
+                                                        </span>
+                                                        {stream.rewatchable && (
+                                                            <span className="text-[9px] font-black uppercase bg-emerald-500 text-white px-2 py-0.5 rounded">
+                                                                REWATCHABLE
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-slate-500 text-xs mt-1.5 line-clamp-2 max-w-xl">{stream.description || 'No description provided.'}</p>
+                                                    <p className="text-[10px] text-slate-400 font-semibold mt-1">Session date: {new Date(stream.createdAt).toLocaleString()}</p>
+                                                </div>
+                                                <button 
+                                                    onClick={() => deleteStreamRecord(stream._id)}
+                                                    className="bg-white hover:bg-red-550 border border-slate-200 hover:border-red-500 hover:text-white text-slate-500 p-3 rounded-xl transition flex items-center gap-1.5 text-xs font-black cursor-pointer"
+                                                >
+                                                    <Trash2 className="w-4 h-4" /> Delete Entirely
+                                                </button>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-10 text-slate-450 text-sm font-medium">
+                                            No stream sessions recorded in the database.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* End Stream Prompt Modal Overlay */}
+                            <AnimatePresence>
+                                {isEndModalOpen && (
+                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6 animate-in fade-in duration-200">
+                                        <motion.div 
+                                            initial={{ scale: 0.95, y: 15 }}
+                                            animate={{ scale: 1, y: 0 }}
+                                            exit={{ scale: 0.95, y: 15 }}
+                                            className="bg-white rounded-[32px] p-8 md:p-10 shadow-2xl border border-slate-100 max-w-[450px] w-full text-center relative overflow-hidden"
+                                        >
+                                            <div className="w-16 h-16 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center mx-auto mb-6">
+                                                <Tv className="w-8 h-8 text-[#f89e35]" />
+                                            </div>
+                                            <h3 className="text-2xl font-black text-slate-900">Finish Screen Broadcasting?</h3>
+                                            <p className="text-slate-500 font-medium text-xs md:text-sm mt-3 leading-relaxed">
+                                                You are stopping the screen sharing broadcast session. What would you like to do with the background recording?
+                                            </p>
+
+                                            <div className="space-y-3 mt-6">
+                                                <button
+                                                    onClick={() => endScreenStream(true)}
+                                                    className="w-full bg-[#f89e35] hover:bg-[#e08b2c] text-white font-black py-4 rounded-2xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer animate-pulse"
+                                                >
+                                                    Save & Make Rewatchable
+                                                </button>
+                                                <button
+                                                    onClick={() => endScreenStream(false)}
+                                                    className="w-full bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-700 font-black py-4 rounded-2xl text-xs uppercase tracking-wider transition cursor-pointer"
+                                                >
+                                                    Discard & Delete Session Entirely
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsEndModalOpen(false)}
+                                                    className="w-full bg-white hover:bg-slate-100 text-slate-400 font-black py-3 rounded-2xl text-xs uppercase tracking-wider transition border border-slate-100 cursor-pointer"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
                 </div>

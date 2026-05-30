@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
+const http = require('http');
+const { Server } = require('socket.io');
 
 // Import Routes
 const projectRoutes = require('./routes/projectRoutes');
@@ -24,6 +26,7 @@ const threeDRoutes = require('./routes/threeDRoutes');
 const authRoutes = require('./routes/authRoutes');
 const scamRoutes = require('./routes/scamRoutes');
 const galleryRoutes = require('./routes/galleryRoutes');
+const streamRoutes = require('./routes/streamRoutes');
 const path = require('path');
 
 
@@ -49,7 +52,10 @@ app.use((req, res, next) => {
         { path: '/api/upload', method: 'POST' },
         { path: '/api/stats/increment', method: 'POST' },
         { path: '/api/analytics/track', method: 'POST' },
-        { path: '/api/tools/download-video', method: 'POST' }
+        { path: '/api/tools/download-video', method: 'POST' },
+        { path: '/api/streams/register', method: 'POST' },
+        { path: '/api/streams/verify-and-log', method: 'POST' },
+        { path: '/api/streams/request-stream', method: 'POST' }
     ];
 
     const isPublicMutation = publicMutations.some(p => 
@@ -101,6 +107,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/3d', threeDRoutes);
 app.use('/api/scams', scamRoutes);
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/streams', streamRoutes);
 
 
 // Serve static files from uploads folder
@@ -110,12 +117,55 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Lala Tech API is running' });
 });
 
+// Create HTTP server wrapping Express app
+const server = http.createServer(app);
+
+// Initialize Socket.io Server
+const io = new Server(server, {
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+    }
+});
+
+// Socket.io WebRTC signaling connection handler
+io.on('connection', (socket) => {
+    console.log('New WebRTC socket connection established:', socket.id);
+
+    socket.on('join-room', ({ room, role }) => {
+        socket.join(room);
+        console.log(`Socket ${socket.id} joined room "${room}" as ${role}`);
+        
+        if (role === 'viewer') {
+            // Alert stream admin that a new viewer has joined and wants to connect
+            socket.to(room).emit('viewer-joined', { socketId: socket.id });
+        }
+    });
+
+    socket.on('offer', ({ sdp, targetSocketId }) => {
+        io.to(targetSocketId).emit('offer', { sdp, senderSocketId: socket.id });
+    });
+
+    socket.on('answer', ({ sdp, targetSocketId }) => {
+        io.to(targetSocketId).emit('answer', { sdp, senderSocketId: socket.id });
+    });
+
+    socket.on('ice-candidate', ({ candidate, targetSocketId }) => {
+        io.to(targetSocketId).emit('ice-candidate', { candidate, senderSocketId: socket.id });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('WebRTC socket disconnected:', socket.id);
+        socket.broadcast.emit('peer-disconnected', { socketId: socket.id });
+    });
+});
+
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
         console.log('Connected to MongoDB');
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        }).setTimeout(10 * 60 * 1000); // 10-minute timeout for large video streams
+        server.listen(PORT, () => {
+            console.log(`Server running on port ${PORT} with Socket.io enabled`);
+        });
     })
     .catch((err) => {
         console.error('MongoDB connection error:', err);

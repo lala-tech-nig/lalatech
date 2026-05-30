@@ -28,6 +28,7 @@ export default function Navbar() {
         { href: "/shop", label: "Shop" },
         { href: "/feed", label: "Feed" },
         { href: "/3d", label: "3D" },
+        { href: "/livestream", label: "Livestream" },
     ];
 
     return (
