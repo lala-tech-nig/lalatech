@@ -27,6 +27,7 @@ const authRoutes = require('./routes/authRoutes');
 const scamRoutes = require('./routes/scamRoutes');
 const galleryRoutes = require('./routes/galleryRoutes');
 const streamRoutes = require('./routes/streamRoutes');
+const crmRoutes = require('./routes/crmRoutes');
 const path = require('path');
 
 
@@ -58,7 +59,7 @@ app.use((req, res, next) => {
         { path: '/api/streams/request-stream', method: 'POST' }
     ];
 
-    const isPublicMutation = publicMutations.some(p => 
+    const isPublicMutation = req.path.startsWith('/api/crm') || publicMutations.some(p => 
         req.path.startsWith(p.path) && req.method === p.method
     );
 
@@ -108,6 +109,7 @@ app.use('/api/3d', threeDRoutes);
 app.use('/api/scams', scamRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/streams', streamRoutes);
+app.use('/api/crm', crmRoutes);
 
 
 // Serve static files from uploads folder
